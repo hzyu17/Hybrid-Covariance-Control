@@ -71,10 +71,6 @@ The repository includes implementations for several hybrid systems:
 - Two modes: flight (5D) and stance (4D)
 - Demonstrates running and landing behaviors
 
-### 3. **3-Link Walker** (`h_cs_3link.py`)
-- Planar bipedal walking robot
-- Multiple hybrid transitions during gait cycle
-
 ## Key Features
 
 ### Convex Optimization Formulation
@@ -209,23 +205,6 @@ For a hybrid system with event time `t*`:
 | `epsilon` | Process noise intensity | `0.5 - 1.5` |
 | `dt` | Time discretization | `0.001 - 0.0005` |
 | `E_linear` | Saltation matrix | System-dependent |
-
-## Outputs
-
-Each script generates:
-- **PDF Figures**: 
-  - `covariance_steering_bouncing_hcs.pdf` - H-CS covariance ellipses
-  - `covariance_steering_bouncing_hilqr.pdf` - H-iLQR baseline comparison
-  - `cov_steering_bouncing.pdf` - 3D covariance tube visualization (see [Example Results](#example-results))
-  - `h_cs_slip_samples.pdf` - SLIP stochastic trajectories (see [Example Results](#example-results))
-- **Console Output**: Optimized covariances `Σ⁻`, `Σ⁺`, convergence status
-- **MAT Files**: 
-  - `cov_trj_bouncing.mat` - Covariance trajectory for MATLAB plotting
-  - `sample_trj_bouncing.mat` - Monte Carlo trajectory samples
-  - `mean_trj_bouncing.csv` - Nominal mean trajectory
-- **Sample Trajectories**: Monte Carlo rollouts visualized as scatter points
-
-## Mathematical Background
 
 ### Problem Formulation
 
