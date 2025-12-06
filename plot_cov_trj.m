@@ -35,7 +35,7 @@ figure(1),hold on;
 surf(X(1:i_event, :),Y(1:i_event, :),Z(1:i_event, :),'FaceColor','blue','EdgeColor','none');
 surf(X(i_event+1:end-1, :),Y(i_event+1:end-1, :),Z(i_event+1:end-1, :),'FaceColor','blue','EdgeColor','none');
 alpha(0.1);
-view(-30,30);
+view(-60, 20)
 
 n_samples = size(x_trj_samples, 1);
 for j = 1:n_samples
@@ -49,4 +49,5 @@ xlabel('Time $t$','Interpreter','latex'),ylabel('Position $z$','Interpreter','la
 zlabel('Velocity $\dot z$','Interpreter','latex');
 set(gca,'fontsize',16);
 output = 1;
+grid minor
 end
