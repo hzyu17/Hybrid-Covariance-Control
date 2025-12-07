@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+from matplotlib.font_manager import FontProperties
 from dynamics.dynamics_discrete_slip import *
 
 
@@ -183,18 +185,6 @@ class hybrid_ilqr:
             A_trj[idx] = A_k
             B_trj[idx] = B_k
             
-            
-            # print("self._states[-1]: ", self._states[-1])
-            # print("self._target_state: ", self._target_state)
-            # print("V_x: ", V_x)
-            # print("V_xx: ", V_xx)
-            # print("l_x: ", l_x)
-            # print("l_u: ", l_u)
-            # print("l_xx: ", l_xx)
-            # print("l_uu: ", l_uu)
-            # print("A_k: ", A_k)
-            # print("B_k: ", B_k)
-            
             if saltation is None:
             
                 Q_x = l_x*self.dt_ + A_k.T@V_x
@@ -206,18 +196,8 @@ class hybrid_ilqr:
                 # Compute gains           
                 k = -np.linalg.solve(Q_uu, Q_u)
                 K = -np.linalg.solve(Q_uu, Q_ux).reshape((self._n_inputs[current_mode], self._n_states[current_mode]))
-
-                # print("Q_x: ", Q_x)
-                # print("Q_u: ", Q_u)
-                # print("Q_ux: ", Q_ux)
-                # print("Q_uu: ", Q_uu)
-                # print("Q_xx: ", Q_xx)
-                # print("k: ", k)
-                # print("K: ", K)
                 
             else:
-                # print("saltation_i: ", saltation)                
-                # print("Found contact dynamics! Computing the gains with saltation matrix.")
                 Q_x = l_x*self.dt_ + A_k.T @ saltation.T @ V_x
                 Q_u = l_u*self.dt_ + B_k.T @ saltation.T @ V_x
                 Q_ux = B_k.T @ saltation.T @ V_xx @ saltation @ A_k
@@ -251,9 +231,7 @@ class hybrid_ilqr:
             expected_cost_reduction_hess +=  current_cost_reduction_hess
             expected_cost_reduction += + current_cost_reduction
 
-            # Update hessian and gradient for value function (If we arent using regularization we can simplify this computation)
-            # V_x = Q_x +K.T@Q_uu@k + K.T@Q_u + Q_ux.T@k
-            # V_xx = (Q_xx+Q_ux.T@K+K.T@Q_ux+K.T@Q_uu@K)
+            # Update hessian and gradient for value function
             V_x = Q_x - K.T@Q_uu@k
             V_xx = Q_xx - K.T@Q_uu@K
 
@@ -310,23 +288,6 @@ class hybrid_ilqr:
             (v_mode_change_ref, v_ext_trj_bwd_ref, v_ext_trj_fwd_ref, 
              v_Kfb_ext_trj_bwd_ref, v_Kfb_ext_trj_fwd_ref, 
              v_kff_ext_trj_bwd_ref, v_kff_ext_trj_fwd_ref, v_tevents_ref) = extract_extensions(self._reference_extension_helper)
-
-            # # ------------------------ Plot reference extensions ------------------------ 
-            # states_arr = np.asarray(self._states)
-            # fig, ax = plt.subplots()
-            # ax.grid(True)
-            # ax.plot(states_arr[:,0], states_arr[:,1], 'k')
-            # for i_ext_trj_bwd in v_ext_trj_bwd_ref[1:2]:
-            #     ax.plot(i_ext_trj_bwd[:,0], i_ext_trj_bwd[:,1], 'r', label="backward extension")
-            # for i_ext_trj_fwd in v_ext_trj_fwd_ref[1:2]: 
-            #     ax.plot(i_ext_trj_fwd[:,0], i_ext_trj_fwd[:,1], 'b', label="forward extension")
-                
-            # ax.legend()
-            # ax.set_xlabel(r"$z$")
-            # ax.set_ylabel(r"$\dot z$")
-            # ax.set_title(r"Bouncing Ball State Plot")
-
-            # plt.show()
             
             if self._verbose:
                 print(f"Reference trajectory bouncing event numbers: {len(v_ext_trj_bwd_ref)}")
@@ -372,13 +333,12 @@ class hybrid_ilqr:
                 #  Mode Mismatch
                 # --------------- 
                 if (current_mode != current_mode_ref) and (check_modemismatch):
-                    # print("mode mismatch at: ", ii)
                     
                     trj_extension = []
                     fb_ext_trj = []
                     ff_ext_trj = []
                     
-                    hybrid_index_ref = np.argmin(abs(np.array(v_tevents_ref)-ii)) # find the nearest hybrid event in the reference
+                    hybrid_index_ref = np.argmin(abs(np.array(v_tevents_ref)-ii))
                     ref_modechange_hybrid = v_mode_change_ref[hybrid_index_ref]
                     
                     # ----------------------------------- Early Arrival ----------------------------------- 
@@ -445,7 +405,6 @@ class hybrid_ilqr:
                     print(f" ===================== At Time {ii}, the system has a mode change from mode {mode_change[0]} to mode {mode_change[1]} =====================")
                     print("-------- reset_byproduct --------")
                     print(reset_byproduct)
-                # event_args.append(reset_byproduct)
                 event_args = reset_byproduct
                 cnt_event += 1
             
@@ -466,7 +425,7 @@ class hybrid_ilqr:
     def solve(self):
         # ------ collect the iteration data ------
         states_iter = []
-        # plot_slip_flight_animate
+        
         # ------------------------------------
         #  First rollout using initial guess
         # ------------------------------------
@@ -484,22 +443,39 @@ class hybrid_ilqr:
             if self._animate_func:
                 fig, ax = self._animate_func(self._modes, self._states, self._init_mode, 
                                             self._init_state, self._target_mode, self._target_state, 
-                                            self._n_timesteps, self._reset_args, self._target_reset_args,step=200)
+                                            self._n_timesteps, self._reset_args, self._target_reset_args, step=200)
+                
+                # Add grid
+                ax.grid(True, linestyle='--', alpha=0.7)
+                
+                # Create legend handles
+                legend_handles = [
+                    Line2D([0], [0], color='black', linewidth=2, label='Flight trajectory'),
+                    Line2D([0], [0], color='blue', linewidth=2, label='Stance trajectory'),
+                    Line2D([0], [0], color='red', linewidth=2, label='Initial state'),
+                    Line2D([0], [0], color='green', linewidth=2, label='Target state'),
+                ]
+                ax.legend(handles=legend_handles, loc='upper left', 
+                         prop={'family': 'serif', 'size': 11}, framealpha=0.9)
+                
+                ax.set_xlabel(r'$p_x$ (m)', fontsize=12, fontfamily='serif')
+                ax.set_ylabel(r'$p_z$ (m)', fontsize=12, fontfamily='serif')
+                ax.set_title('Initial Rollout', fontsize=14, fontfamily='serif')
             
                 fig.tight_layout()
                 ax.set_xlim(-0.4, 1.25)
                 ax.set_ylim(-0.2, 1.65)
-                fig.savefig(root_dir+'/data/figures/slip/slip_jump_setting.pdf', dpi=2000)
+                fig.savefig(root_dir+'/figures/slip/slip_jump_setting.pdf', dpi=2000)
                 plt.show()
             
         # ----------------------------------------------------
         #  Compute the current cost of the initial trajectory
         # ----------------------------------------------------
         current_cost = self.compute_cost(timespan,modes,states,inputs)
-        learning_speed = 0.95 # This can be modified, 0.95 is very slow
-        low_learning_rate = 0.001 # if learning rate drops to this value stop the optimization
-        low_expected_reduction = 1e-4 # Determines optimality
-        armijo_threshold = 0.05 # Determines if current line search solve is good (this is typically labeled as "c")
+        learning_speed = 0.95
+        low_learning_rate = 0.001
+        low_expected_reduction = 1e-4
+        armijo_threshold = 0.05
         
         # =================================================================
         #                             Main Loop
@@ -533,9 +509,6 @@ class hybrid_ilqr:
             # ----------------------------------------------
             #  Forward pass under the updated control gains
             # ----------------------------------------------
-            
-            # Execute linesearch until the armijo condition is met (for
-            # now just check if the cost decreased) 
             while (learning_rate>low_learning_rate and armijo_flag == 0):
                 
                 # Forward pass: line search 
@@ -553,7 +526,24 @@ class hybrid_ilqr:
                     if self._animate_func:
                         fig, ax = self._animate_func(self._modes, self._states, self._init_mode, 
                                                     self._init_state, self._target_mode, self._target_state, 
-                                                    self._n_timesteps, self._reset_args, self._target_reset_args,step=200)
+                                                    self._n_timesteps, self._reset_args, self._target_reset_args, step=200)
+                        
+                        # Add grid
+                        ax.grid(True, linestyle='--', alpha=0.7)
+                        
+                        # Create legend handles
+                        legend_handles = [
+                            Line2D([0], [0], color='black', linewidth=2, label='Flight trajectory'),
+                            Line2D([0], [0], color='blue', linewidth=2, label='Stance trajectory'),
+                            Line2D([0], [0], color='red', linewidth=2, label='Initial state'),
+                            Line2D([0], [0], color='green', linewidth=2, label='Target state'),
+                        ]
+                        ax.legend(handles=legend_handles, loc='upper left', 
+                                 prop={'family': 'serif', 'size': 11}, framealpha=0.9)
+                        
+                        ax.set_xlabel(r'$p_x$ (m)', fontsize=12, fontfamily='serif')
+                        ax.set_ylabel(r'$p_z$ (m)', fontsize=12, fontfamily='serif')
+                        ax.set_title(f'Forward Pass (lr={learning_rate:.3f})', fontsize=14, fontfamily='serif')
                     
                         fig.tight_layout()
                         ax.set_xlim(-0.4, 1.25)
@@ -621,7 +611,6 @@ class hybrid_ilqr:
         if len(hybrid_event_info.keys()) == 0:
             return []
         
-        # hybrid_event_info:
         sorted_hybrid_index = sorted(hybrid_event_info.keys())
         ref_ext_helper = []
         
@@ -646,7 +635,6 @@ class hybrid_ilqr:
         k_feedforward_bwd_extensions.append(np.zeros(1))
         mode_changes.append(np.array([0, 0]))
         
-        # hybrid_event_info[i_key] = (t_event, x_event, x_reset, mode_change, K_feedback_extensions, K_feedforward_extensions)
         for i_key in sorted_hybrid_index:
             i_events.append(i_key)
             t_events.append(hybrid_event_info[i_key][0])
@@ -672,7 +660,7 @@ class hybrid_ilqr:
         if hybrid_event_info.keys():
             mode_changes.append(hybrid_event_info[sorted_hybrid_index[-1]][3])
         
-        # Forward and backward trajectory extensions, and (feedback, feedforward) gains for the two extensions
+        # Forward and backward trajectory extensions
         for ii, _ in enumerate(t_events[1:-1], start=1):
             if ii < len(t_events[1:-1]):
                 i_event_next = i_events[ii+1]
@@ -695,48 +683,31 @@ class hybrid_ilqr:
             K_feedback_bwd_extension_i = K_feedback_bwd_extensions[ii]
             k_feedforward_bwd_extension_i = k_feedforward_bwd_extensions[ii]
             
-            # --------------------------------------
-            # Choose a time span for the extensions
-            # --------------------------------------
             t_ext_fwd_i = self.end_time_
             
             # ============================== forward trajectory extension ==============================
-            # ---- [t_event, t_trj_ext_fwd] ----
-            # timespan_ext_fwd = np.arange(tevent_i, t_ext_fwd_i, self.dt_)
-            # timespan[i_event+1] has two states simultaneously: the x_event and the x_reset. 
             timespan_ext_fwd = timespan[i_event+1:]
             nt_ext_fwd = len(timespan_ext_fwd)
             xtrj_ext_fwd_i = np.zeros((nt_ext_fwd, self._n_states[current_mode_i]))
             xtrj_ext_fwd_i[0] = np.asarray(x_event_i)
             
-            # ------------- Use the same gain for the whole extensions ------------- 
             K_feedback_ext_fwd_i = np.tile(K_feedback_fwd_extension_i, (self._n_timesteps, 1, 1))
             k_feedforward_ext_fwd_i = np.tile(k_feedforward_fwd_extension_i, (self._n_timesteps, 1))
             
-            # ----------------------------------
-            #   Simulate the forward extension
-            # ----------------------------------
             for jj in range(nt_ext_fwd-1):
                 current_state = xtrj_ext_fwd_i[jj]
                 
                 t_jj = timespan_ext_fwd[jj]
                 dt = timespan_ext_fwd[jj+1] - t_jj
                 
-                # Using zero control, modify if needed.
                 current_input = np.zeros(self._n_inputs[current_mode_i])
                 
                 next_state, _, _, _, _, _, _ = self.detection_func_(current_mode_i, current_state, 
                                                                     current_input, t_jj, dt, 
                                                                     self._reset_args[jj], detection=False)
              
-                # Store states and inputs
                 xtrj_ext_fwd_i[jj+1] = next_state
             
-            
-            # ---- [0, t_event] for padding ----
-            # time_span_ext_fwd_padding = np.arange(0, tevent_i, self.dt_)
-            
-            # Pad the forward trajectory extension
             time_span_ext_fwd_padding = timespan[:i_event+1]
             nt_ext_padding_fwd = len(time_span_ext_fwd_padding)
             xtrj_ext_padding_fwd_i = np.zeros((nt_ext_padding_fwd, self._n_states[current_mode_i]))
@@ -744,28 +715,20 @@ class hybrid_ilqr:
             xtrj_ext_fwd_i = np.vstack((xtrj_ext_padding_fwd_i, xtrj_ext_fwd_i))
             
             # ============================== backward trajectory extension ==============================
-            # ---- [t_trj_ext_bwd: t_event] ----
             timespan_ext_bwd = timespan[:i_event+1][::-1]
-            # timespan_ext_bwd = np.arange(0, tevent_i, self.dt_)[::-1]
             
-            # time span lengths
             nt_ext_bwd = len(timespan_ext_bwd)
             xtrj_ext_bwd_i = np.zeros((nt_ext_bwd, self._n_states[next_mode_i]))
             xtrj_ext_bwd_i[0] = x_reset_i
             
-            
             K_feedback_ext_bwd_i = np.tile(K_feedback_bwd_extension_i, (self._n_timesteps, 1, 1))
             k_feedforward_ext_bwd_i = np.tile(k_feedforward_bwd_extension_i, (self._n_timesteps, 1))
             
-            # ----------------------------------
-            # simulate the backward extension
-            # ----------------------------------
             for jj in range(nt_ext_bwd-1):
                 current_state = xtrj_ext_bwd_i[jj]
                 t_jj = timespan_ext_bwd[jj]
                 dt = t_jj - timespan_ext_bwd[jj+1]
                 
-                # modify if needed
                 current_input = np.zeros(self._n_inputs[next_mode_i])
                 
                 next_state, _, _, _, _, _, _ = self.detection_func_(next_mode_i,current_state, 
@@ -774,41 +737,22 @@ class hybrid_ilqr:
                                                                     detect=False, 
                                                                     backwards=True)
                 
-                # Store states and inputs
                 xtrj_ext_bwd_i[jj+1] = next_state
             
-            # --------------------------------
-            #  Reverse the backward extension 
-            # --------------------------------   
             xtrj_ext_bwd_i = xtrj_ext_bwd_i[::-1]
             
-            # --------------------- padding ---------------------
             time_span_ext_bwd_padding = timespan[i_event+1:]
             nt_ext_padding_bwd = len(time_span_ext_bwd_padding)
             xtrj_ext_padding_bwd_i = np.zeros((nt_ext_padding_bwd, self._n_states[next_mode_i]))   
             xtrj_ext_padding_bwd_i[:i_event_next-i_event] = np.asarray(states[i_event+1:i_event_next+1])
             xtrj_ext_bwd_i = np.vstack((xtrj_ext_bwd_i, xtrj_ext_padding_bwd_i))
             
-            # ------------------------ collect the trajectory extensions ------------------------
             ref_ext_helper.append({"Mode Change": np.array([current_mode_i, next_mode_i]), 
                                     "Trajectory Extensions": {current_mode_i:xtrj_ext_fwd_i, next_mode_i:xtrj_ext_bwd_i}, 
                                     "Feedback gains": {current_mode_i:K_feedback_ext_fwd_i, next_mode_i:K_feedback_ext_bwd_i}, 
                                     "Feedforward gains": {current_mode_i:k_feedforward_ext_fwd_i, next_mode_i:k_feedforward_ext_bwd_i}, 
                                     "event index":  i_event
                                     })
-        
-        # fig, axes = plt.subplots(2,1)
-        # ax1, ax2 = axes.flatten()
-        
-        # ax1.grid(True)
-        # ax2.grid(True)    
-        
-        # states = np.asarray(states)
-        # ax1.plot(states[:, 1], 'k')
-        # ax1.plot(xtrj_ext_fwd_i[:, 1], 'r')
-        # ax1.plot(xtrj_ext_bwd_i[:, 1], 'b')
-        
-        # plt.show()
         
         return ref_ext_helper
 
@@ -825,31 +769,29 @@ def solve_ilqr(params, detect=True, verbose=True):
 
     # Initialize timings
     dt = params._dt
-    # dt_shrink = params._dt_shrink
     
     start_time = params._start_time
     end_time = params._end_time
 
     # Set desired state
-    init_state = params._init_state  # Define the initial state to be the origin with no velocity
-    target_state = params._target_state  # Swing pendulum upright
+    init_state = params._init_state
+    target_state = params._target_state
 
-    # Initial guess of zeros, but you can change it to any guess
+    # Initial guess
     initial_guess = params._initial_guess
     
-    # Initial resetmap arguments, for instance the stance positions for the SLIP
+    # Reset arguments
     init_reset_args = params._init_reset_args
-    
     target_reset_args = params._target_reset_args
 
     # Define weighting matrices
-    Q_k = params._Q_k # zero weight to penalties along a strajectory since we are finding a trajectory
+    Q_k = params._Q_k
     R_k = params._R_k
 
     # Set the terminal cost
     Q_T = params._Q_T
 
-    # Set the physical parameters of the system
+    # Set the physical parameters
     mass = 1
     gravity = 9.8
     parameters = np.array([mass,gravity])
@@ -873,4 +815,3 @@ def solve_ilqr(params, detect=True, verbose=True):
                         animate_function, verbose)
     
     return ilqr_.solve()
-        

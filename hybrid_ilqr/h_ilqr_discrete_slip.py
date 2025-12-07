@@ -12,8 +12,6 @@ sys.path.append(root_dir)
 from hybrid_ilqr.h_ilqr_discrete import solve_ilqr, extract_extensions
 # Import SLIP dynamics
 from dynamics.dynamics_discrete_slip import *
-# Importing path integral control
-from hybrid_pathintegral.hybrid_pathintegral import *
 # Import experiment parameter class
 from experiments.exp_params import *
 
@@ -164,3 +162,4 @@ if __name__ == '__main__':
         plot_slip(time_span, modes, states, inputs, init_state, target_state, nt, ref_reset_args)
         animate_slip(modes, states, init_mode, init_state, target_mode, target_state, nt, ref_reset_args, target_reset_args,step=20)
         plt.show()
+

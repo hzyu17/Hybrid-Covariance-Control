@@ -1,198 +1,230 @@
-## 2-dimensional SLIP dynamics
-# mode 1: x = [px, vx, pz, vz, theta], u = [theta_dot]
-# mode 2: x = [theta, theta_dot, r, r_dot], u = [r_delta, \tau_hip]
-# reset maps: identity
+"""
+SLIP (Spring-Loaded Inverted Pendulum) guard and reset map definitions.
+
+Mode 0 (flight): x = [px, vx, pz, vz, theta]
+Mode 1 (stance): x = [theta, theta_dot, r, r_dot]
+
+Transitions:
+- 12: Flight -> Stance (touchdown)
+- 21: Stance -> Flight (liftoff)
+"""
 
 import os
 import sys
 file_path = os.path.abspath(__file__)
 current_dir = os.path.dirname(file_path)
 root_dir = os.path.abspath(os.path.join(current_dir, '..'))
-
 sys.path.append(root_dir)
 
-from dynamics.saltation_matrix import *
 import numpy as np
-import jax.numpy as jnp
-
 import jax
-from jax import grad 
+import jax.numpy as jnp
+from jax import grad
 
+from dynamics.saltation_matrix import *
+
+# =============================================================================
+#                              Constants
+# =============================================================================
+
+R0 = 1.0  # Rest length of spring
+
+
+# =============================================================================
+#                         Mode Change Helper
+# =============================================================================
 
 def mode_change_maps(current_mode):
-    new_mode = current_mode
-    if (current_mode == 0):
-        new_mode = 1
-    elif (current_mode == 1):
-        new_mode = 0
-    return new_mode
+    """Toggle between modes 0 and 1."""
+    return 1 - current_mode
 
-# =========================================================
-# The guard and reset map from flight mode to stance mode
-# =========================================================
+
+# =============================================================================
+#                    Flight -> Stance (12) Transition
+# =============================================================================
 
 @jax.jit
 def guard_slip_12(t, x):
-    r0 = 1
-    return  r0*jnp.sin(x[4]) - x[2]
+    """
+    Guard function for flight -> stance transition.
+    Triggers when foot touches ground: r0*sin(theta) - z = 0
+    
+    Args:
+        t: Time (unused, for interface compatibility)
+        x: Flight state [px, vx, pz, vz, theta]
+    
+    Returns:
+        Guard value (negative in flight, positive when ground contact)
+    """
+    return R0 * jnp.sin(x[4]) - x[2]
 
-# reset map from flight mode to stance mode
+
 @jax.jit
 def reset_map_slip_12(x_event, current_mode, args_reset):
-    # x_event: [x, x_dot, z, z_dot, theta]
+    """
+    Reset map for flight -> stance transition.
     
-    r0 = 1
-    x, xdot, z, zdot, theta = x_event
+    Args:
+        x_event: Flight state at event [px, vx, pz, vz, theta]
+        current_mode: Current mode (should be 0)
+        args_reset: Reset arguments (unused for this transition)
     
-    x_reset = x_event
-    args = (x_event, current_mode)
+    Returns:
+        x_reset: Stance state [theta, theta_dot, r, r_dot]
+        new_mode: 1 (stance)
+        new_args: Tuple containing foot contact x-position
+    """
+    px, vx, pz, vz, theta = x_event
     
-    stance_cond = jax.numpy.logical_and(z-r0*jnp.sin(theta) < 0, current_mode==0)
+    r = R0
+    r_dot = -vx * jnp.cos(theta) + vz * jnp.sin(theta)
+    theta_dot = (px * vz - pz * vx) / (r * r)
     
-    def stance_true_fun(args):
-        r = r0
-        r_dot = -xdot*jnp.cos(theta) + zdot*jnp.sin(theta)
-        # theta_dot = -(xdot * jnp.cos(theta) + zdot * jnp.sin(theta)) / r0
-        theta_dot = (x*zdot - z*xdot) / r / r
-        x_reset = jnp.array([theta, theta_dot, r, r_dot])
-        return x_reset # We need to record the position x at the impact time
+    x_reset = jnp.array([theta, theta_dot, r, r_dot])
+    foot_x = px - jnp.cos(theta)  # Foot contact position
     
-    def stance_false_fun(args):
-        r = r0
-        r_dot = -xdot*jnp.cos(theta) + zdot*jnp.sin(theta)
-        theta_dot = (x*zdot - z*xdot) / r / r
-        # theta_dot = -(xdot * jnp.cos(theta) + zdot * jnp.sin(theta)) / r0
-        x_reset = jnp.array([theta, theta_dot, r, r_dot])
-        return x_reset
-    
-    args = (x_event, current_mode)
-    x_reset = jax.lax.cond(stance_cond, stance_true_fun, stance_false_fun, args)
-    
-    return x_reset, 1, (x_event[0]-jnp.cos(x_event[4]), )
+    return x_reset, 1, (foot_x,)
 
 
-# reset map from flight mode to stance mode
 @jax.jit
 def reset_map_slip_12_padding(t, x_event, current_mode, args_reset):
-    # x_event: [x, x_dot, z, z_dot, theta]
+    """
+    Reset map with zero-padded output for uniform state dimension.
     
-    r0 = 1
-    new_mode = current_mode
-    x, xdot, z, zdot, theta = x_event
+    Returns 5D state with last element zeroed for compatibility.
+    """
+    px, vx, pz, vz, theta = x_event
     
-    x_reset = x_event
-    args = (x_event, current_mode)
+    r = R0
+    r_dot = -vx * jnp.cos(theta) + vz * jnp.sin(theta)
+    theta_dot = (px * vz - pz * vx) / (r * r)
     
-    stance_cond = jax.numpy.logical_and(z-r0*jnp.sin(theta) < 0, current_mode==0)
-    
-    def stance_true_fun(args):
-        r = r0
-        r_dot = -xdot*jnp.cos(theta) + zdot*jnp.sin(theta)
-        # theta_dot = -(xdot * jnp.cos(theta) + zdot * jnp.sin(theta)) / r0
-        theta_dot = (x*zdot - z*xdot) / r / r
-        x_reset = jnp.array([theta, theta_dot, r, r_dot, 0.0])
-        return x_reset # We need to record the position x at the impact time
-    
-    def stance_false_fun(args):
-        r = r0
-        r_dot = -xdot*jnp.cos(theta) + zdot*jnp.sin(theta)
-        theta_dot = (x*zdot - z*xdot) / r / r
-        # theta_dot = -(xdot * jnp.cos(theta) + zdot * jnp.sin(theta)) / r0
-        x_reset = jnp.array([theta, theta_dot, r, r_dot, 0.0])
-        return x_reset
-    
-    args = (x_event, current_mode)
-    x_reset = jax.lax.cond(stance_cond, stance_true_fun, stance_false_fun, args)
+    x_reset = jnp.array([theta, theta_dot, r, r_dot, 0.0])
     
     return x_reset, 1, x_event[0]
 
-# =========================================================
-# The guard and reset map from stance mode to flight mode
-# =========================================================
-# xs: [theta, theta_dot, r, r_dot]
-# guard_21 = r - r0
+
+# =============================================================================
+#                    Stance -> Flight (21) Transition
+# =============================================================================
+
+@jax.jit
 def guard_slip_21(t, x):
-    r0 = 1
-    return x[2] - r0
+    """
+    Guard function for stance -> flight transition.
+    Triggers when spring reaches rest length: r - r0 = 0
+    
+    Args:
+        t: Time (unused, for interface compatibility)
+        x: Stance state [theta, theta_dot, r, r_dot]
+    
+    Returns:
+        Guard value (negative when compressed, positive at liftoff)
+    """
+    return x[2] - R0
 
 
-# reset map from stance mode to flight mode
+@jax.jit
 def reset_map_slip_21(x_event, current_mode, args_reset):
-    xp = args_reset[0]
-    # xp = 0.0
-    r0 = 1
-    # x_reset = x_event
+    """
+    Reset map for stance -> flight transition.
+    
+    Args:
+        x_event: Stance state at event [theta, theta_dot, r, r_dot]
+        current_mode: Current mode (should be 1)
+        args_reset: Reset arguments containing (foot_x_position,)
+    
+    Returns:
+        x_reset: Flight state [px, vx, pz, vz, theta]
+        new_mode: 0 (flight)
+        new_args: Pass through args_reset
+    """
+    xp = args_reset[0]  # Foot contact position
     theta, theta_dot, r, r_dot = x_event
     
-    px_reset = xp + r0*jnp.cos(theta)
-    vx_reset = r_dot*jnp.cos(theta) - r*theta_dot*jnp.sin(theta)
-    pz_reset = r0*jnp.sin(theta)
-    vz_reset = r0*theta_dot*jnp.cos(theta) + r_dot*jnp.sin(theta)
-    theta_reset = theta
-
-    x_reset = jnp.array([px_reset, vx_reset, pz_reset, vz_reset, theta_reset])
+    px = xp + R0 * jnp.cos(theta)
+    vx = r_dot * jnp.cos(theta) - r * theta_dot * jnp.sin(theta)
+    pz = R0 * jnp.sin(theta)
+    vz = R0 * theta_dot * jnp.cos(theta) + r_dot * jnp.sin(theta)
+    
+    x_reset = jnp.array([px, vx, pz, vz, theta])
     
     return x_reset, 0, args_reset
 
 
-# --------------------------------------------------------------
-# Conversion between the two state space (from stance to flight)
-# --------------------------------------------------------------
+# =============================================================================
+#                    State Conversion Utilities
+# =============================================================================
+
 def convert_state_21_slip(state_2, foot_contact_pos=0.0):
     """
-    Utility function to convert an actuated SLIP CoM trajectory in polar coordinates to cartesian.
-    This function assumes the extended SLIP model presented in "Optimal Control of a Differentially Flat
-    Two-Dimensional Spring-Loaded Inverted Pendulum Model".
-    :param trajectory: (4, k) Polar trajectory of the SLIP model during stance phase
-    :param control_signal: (2, k) Optional leg length displacement and hip torque of exerted at every timestep during the
-    stance phase.
-    :param foot_contact_pos: Cartesian x coordinate of the foot contact point during the stance phase of the input
-    trajectory.
-    :return:
+    Convert stance state (polar) to flight state (Cartesian).
+    
+    Args:
+        state_2: Stance state [theta, theta_dot, r, r_dot]
+        foot_contact_pos: X-coordinate of foot contact point
+    
+    Returns:
+        Cartesian state [px, vx, pz, vz, theta]
     """
     polar_traj = np.array(state_2)
-    assert polar_traj.shape[0] == 4, 'Provide a valid (4, k) polar trajectory: %s' % polar_traj.shape
+    assert polar_traj.shape[0] == 4, f'Expected (4,) polar state, got {polar_traj.shape}'
+    
     if polar_traj.ndim == 1:
         polar_traj = np.expand_dims(polar_traj, axis=1)
 
     theta, theta_dot, r, r_dot = polar_traj[0], polar_traj[1], polar_traj[2], polar_traj[3]
 
-    x = np.cos(theta) * r
+    x = np.cos(theta) * r + foot_contact_pos
     x_dot = -r * theta_dot * np.sin(theta) + np.cos(theta) * r_dot
     z = np.sin(theta) * r
     z_dot = np.cos(theta) * theta_dot * r + np.sin(theta) * r_dot
 
-    # Center x dimension
-    # print("foot_contact_pos: ", foot_contact_pos)
-    x += foot_contact_pos
-
-    cartesian_state = np.array([x, x_dot, z, z_dot, theta])
-    return cartesian_state
+    return np.array([x, x_dot, z, z_dot, theta])
 
 
-# Define derivatives
+# =============================================================================
+#                    Jacobians and Derivatives
+# =============================================================================
+
+# Time derivatives of reset maps (both are time-independent)
 def Rt_slip_12(x, current_mode, args):
+    """Time derivative of reset map 12 (zero - time independent)."""
     return 0.0
 
-Rx_slip_12 = jax.jacrev(lambda x, current_mode, args: reset_map_slip_12(x, current_mode, args), 0)
 
 def Rt_slip_21(x, current_mode, args):
+    """Time derivative of reset map 21 (zero - time independent)."""
     return 0.0
 
-Rx_slip_21 = jax.jacrev(lambda x, current_mode, args: reset_map_slip_21(x, current_mode, args), 0)
 
-gt_slip_12 = jax.jit(grad(lambda t, x: guard_slip_12(t, x), 0))
-    
-gx_slip_12 = jax.jit(grad(lambda t, x: guard_slip_12(t, x), 1))
+# State Jacobians of reset maps
+# NOTE: We differentiate only the state output [0], not the mode or args
+Rx_slip_12 = jax.jacrev(
+    lambda x, current_mode, args: reset_map_slip_12(x, current_mode, args)[0], 
+    argnums=0
+)
 
-gx_slip_21 = jax.jit(grad(lambda t, x: guard_slip_21(t, x), 1))
-    
-gt_slip_21 = jax.jit(grad(lambda t, x: guard_slip_21(t, x), 0))
+Rx_slip_21 = jax.jacrev(
+    lambda x, current_mode, args: reset_map_slip_21(x, current_mode, args)[0], 
+    argnums=0
+)
 
 
-guard_slip_12.terminal=True
-guard_slip_12.direction=-1
+# Guard derivatives
+gt_slip_12 = jax.jit(grad(lambda t, x: guard_slip_12(t, x), argnums=0))
+gx_slip_12 = jax.jit(grad(lambda t, x: guard_slip_12(t, x), argnums=1))
 
-guard_slip_21.terminal=True
-guard_slip_21.direction=1
-  
+gt_slip_21 = jax.jit(grad(lambda t, x: guard_slip_21(t, x), argnums=0))
+gx_slip_21 = jax.jit(grad(lambda t, x: guard_slip_21(t, x), argnums=1))
+
+
+# =============================================================================
+#                    Guard Attributes (for ODE solvers)
+# =============================================================================
+
+guard_slip_12.terminal = True
+guard_slip_12.direction = -1
+
+guard_slip_21.terminal = True
+guard_slip_21.direction = 1

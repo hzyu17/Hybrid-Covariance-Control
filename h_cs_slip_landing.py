@@ -14,8 +14,6 @@ np.set_printoptions(suppress=True, precision=4)
 from hybrid_ilqr.h_ilqr_discrete import solve_ilqr, extract_extensions
 # Import SLIP dynamics
 from dynamics.dynamics_discrete_slip import *
-# Importing path integral control
-from hybrid_pathintegral.hybrid_pathintegral import *
 # Import experiment parameter class
 from experiments.exp_params import *
 from tools.plot_ellipsoid import *

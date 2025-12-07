@@ -11,11 +11,9 @@ sys.path.append(root_dir)
 np.set_printoptions(suppress=True, precision=4)
 
 # Import iLQR class
-from hybrid_ilqr.h_ilqr_discrete import solve_ilqr, extract_extensions
+from hybrid_ilqr.h_ilqr_discrete_slip import solve_ilqr, extract_extensions
 # Import SLIP dynamics
 from dynamics.dynamics_discrete_slip import *
-# Importing path integral control
-from hybrid_pathintegral.hybrid_pathintegral import *
 # Import experiment parameter class
 from experiments.exp_params import *
 from tools.plot_ellipsoid import *
@@ -738,6 +736,12 @@ if __name__ == '__main__':
     print("==================== Sigma_plus targeted ==================")
     print(Sig_plus_opt)
 
+    # =============================================================================
+#                         Plotting Section
+# =============================================================================
+# Replace the plotting section (starting from "eval_Sig0, evec_Sig0 = ...") 
+# with this improved version that includes proper legends
+
     eval_Sig0, evec_Sig0 = np.linalg.eigh(Sig0)
     sqrtSig0 = evec_Sig0 @ np.diag(np.sqrt(eval_Sig0)) @ evec_Sig0.T
     t0 = 0.0
@@ -748,13 +752,14 @@ if __name__ == '__main__':
                            init_mode, init_state, 
                            target_mode, target_state, nt, 
                            init_reset_args, target_reset_args, step=400)
-    
+    ax.set_title("Hybrid Covariance Steering (H-CS)", fontsize=14, fontfamily='serif')
 
-    # Plot the mean trajectory
+    # Plot the mean trajectory for H-iLQR
     fig_ilqr, ax_ilqr = animate_slip(modes, states, 
                            init_mode, init_state, 
                            target_mode, target_state, nt, 
                            init_reset_args, target_reset_args, step=400)
+    ax_ilqr.set_title("Hybrid iLQR (H-iLQR)", fontsize=14, fontfamily='serif')
 
     # Plot the samples
     K1_list = [K1[i] for i in range(len(K1))]
@@ -767,21 +772,22 @@ if __name__ == '__main__':
     k_ff_hcs_2 = np.zeros_like(k_ff_2)
     k_ff_hcs_1_list = [k_ff_hcs_1[i] for i in range(k_ff_hcs_1.shape[0])]
     k_ff_hcs_2_list = [k_ff_hcs_2[i] for i in range(k_ff_hcs_2.shape[0])]
-    k_ff_hcs = k_ff_hcs_1_list+k_ff_hcs_2_list
+    k_ff_hcs = k_ff_hcs_1_list + k_ff_hcs_2_list
     
-    # At_1 = [A1[i] for i in range(A1.shape[0])]
-    # At_2 = [A2[i] for i in range(A2.shape[0])]
-    # Bt_1 = [B1[i] for i in range(B1.shape[0])]
-    # Bt_2 = [B2[i] for i in range(B2.shape[0])]
-
-    # At = At_1 + At_2
-    # Bt = Bt_1 + Bt_2
-
     n_exp = 12
     np.random.seed(70)
+    
+    # Create proxy artists for legend (only need to create once)
+    sample_scatter_hcs = None
+    sample_scatter_ilqr = None
+    start_scatter_hcs = None
+    start_scatter_ilqr = None
+    goal_scatter_hcs = None
+    goal_scatter_ilqr = None
+    
     for i in range(n_exp):
         GaussianNoise_i = [np.random.randn(nt, n_inputs[0]), np.random.randn(nt, n_inputs[1])]
-        x0_i = init_state + sqrtSig0@np.random.randn(n_states[1])
+        x0_i = init_state + sqrtSig0 @ np.random.randn(n_states[1])
 
         # ---------------------- Samples H-CS ----------------------
         (mode_trj, 
@@ -812,7 +818,7 @@ if __name__ == '__main__':
                                                     reference_extension_helper, init_reset_args)
 
         # Plot samples, H-CS
-        for ii in range(0,nt,300):
+        for ii in range(0, nt, 300):
             mode_i = mode_trj[ii]
 
             if mode_i == 0:
@@ -821,10 +827,12 @@ if __name__ == '__main__':
                 converted_state = convert_state_21_slip(xt_trj[ii])
                 px, pz = converted_state[0], converted_state[2]
 
-            ax.scatter(px, pz, marker='.', c='c', s=12)
+            scatter = ax.scatter(px, pz, marker='.', c='cyan', s=12, alpha=0.7)
+            if sample_scatter_hcs is None:
+                sample_scatter_hcs = scatter
         
         # Plot samples, H-iLQR
-        for ii in range(0,nt,300):
+        for ii in range(0, nt, 300):
             mode_i = mode_trj_ilqr[ii]
 
             if mode_i == 0:
@@ -833,54 +841,94 @@ if __name__ == '__main__':
                 converted_state = convert_state_21_slip(xt_trj_ilqr[ii])
                 px_ilqr, pz_ilqr = converted_state[0], converted_state[2]
 
-            ax_ilqr.scatter(px_ilqr, pz_ilqr, marker='.', c='c', s=12)
+            scatter = ax_ilqr.scatter(px_ilqr, pz_ilqr, marker='.', c='cyan', s=12, alpha=0.7)
+            if sample_scatter_ilqr is None:
+                sample_scatter_ilqr = scatter
 
-        # plot start and goals
+        # Plot start points
         converted_state = convert_state_21_slip(xt_trj[0])
         px_0, pz_0 = converted_state[0], converted_state[2]
-        ax.scatter(px_0, pz_0, marker='d', c='r', s=12)
-        ax_ilqr.scatter(px_0, pz_0, marker='d', c='r', s=12)
+        
+        scatter_start = ax.scatter(px_0, pz_0, marker='d', c='red', s=25, edgecolors='darkred', linewidths=0.5)
+        scatter_start_ilqr = ax_ilqr.scatter(px_0, pz_0, marker='d', c='red', s=25, edgecolors='darkred', linewidths=0.5)
+        
+        if start_scatter_hcs is None:
+            start_scatter_hcs = scatter_start
+        if start_scatter_ilqr is None:
+            start_scatter_ilqr = scatter_start_ilqr
 
+        # Plot goal points
         px_T, pz_T = xt_trj[-1][0], xt_trj[-1][2]
-        ax.scatter(px_T, pz_T, marker='d', c='g', s=12)
         px_T_ilqr, pz_T_ilqr = xt_trj_ilqr[-1][0], xt_trj_ilqr[-1][2]
-        ax_ilqr.scatter(px_T_ilqr, pz_T_ilqr, marker='d', c='g', s=12)
+        
+        scatter_goal = ax.scatter(px_T, pz_T, marker='d', c='lime', s=25, edgecolors='darkgreen', linewidths=0.5)
+        scatter_goal_ilqr = ax_ilqr.scatter(px_T_ilqr, pz_T_ilqr, marker='d', c='lime', s=25, edgecolors='darkgreen', linewidths=0.5)
+        
+        if goal_scatter_hcs is None:
+            goal_scatter_hcs = scatter_goal
+        if goal_scatter_ilqr is None:
+            goal_scatter_ilqr = scatter_goal_ilqr
 
-         
-    # ax.legend()
     # Draw covariances
-    SigT_mar = SigT[0:2, 0:2]   
-    target_ellipse_boundary, ax = plot_2d_ellipsoid_boundary(np.array([xt_trj_mean[-1][0], xt_trj_mean[-1][2]]), SigT_mar, ax, 'g', linewidth=1.0)
-    target_ellipse_boundary_ilqr, ax_ilqr = plot_2d_ellipsoid_boundary(np.array([xt_trj_mean[-1][0], xt_trj_mean[-1][2]]), SigT_mar, ax_ilqr, 'g', linewidth=1.0)
+    SigT_mar = SigT[0:2, 0:2]
+    target_ellipse_boundary, ax = plot_2d_ellipsoid_boundary(
+        np.array([xt_trj_mean[-1][0], xt_trj_mean[-1][2]]), 
+        SigT_mar, ax, 'green', linewidth=2.0
+    )
+    target_ellipse_boundary_ilqr, ax_ilqr = plot_2d_ellipsoid_boundary(
+        np.array([xt_trj_mean[-1][0], xt_trj_mean[-1][2]]), 
+        SigT_mar, ax_ilqr, 'green', linewidth=2.0
+    )
 
-    ax.legend([target_ellipse_boundary], [ 
-                    r'Target covariance $\Sigma_T$'], 
-                    prop={'family': 'serif', 'size': 15})
-    ax_ilqr.legend([target_ellipse_boundary], [ 
-                    r'Target covariance $\Sigma_T$'], 
-                    prop={'family': 'serif', 'size': 15})
+    # Create proxy artists for legend items that need custom representation
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
     
-    # ax.set_title("H-CS")
-    # ax_ilqr.set_title("H-iLQR")
-    fig.savefig("h_cs_slip_samples.pdf", format="pdf", dpi=2000)
+    # Legend handles for H-CS plot
+    legend_handles_hcs = [
+        Line2D([0], [0], color='black', linewidth=2, linestyle='-', label='Mean trajectory'),
+        Line2D([0], [0], marker='.', color='w', markerfacecolor='cyan', markersize=10, 
+               label='Sample trajectories', linestyle='None'),
+        Line2D([0], [0], marker='d', color='w', markerfacecolor='red', markersize=8,
+               markeredgecolor='darkred', label='Initial states', linestyle='None'),
+        Line2D([0], [0], marker='d', color='w', markerfacecolor='lime', markersize=8,
+               markeredgecolor='darkgreen', label='Terminal states', linestyle='None'),
+        Line2D([0], [0], color='green', linewidth=2, linestyle='-', label=r'Target covariance $\Sigma_T$'),
+    ]
+    
+    # Legend handles for H-iLQR plot
+    legend_handles_ilqr = [
+        Line2D([0], [0], color='black', linewidth=2, linestyle='-', label='Mean trajectory'),
+        Line2D([0], [0], marker='.', color='w', markerfacecolor='cyan', markersize=10, 
+               label='Sample trajectories', linestyle='None'),
+        Line2D([0], [0], marker='d', color='w', markerfacecolor='red', markersize=8,
+               markeredgecolor='darkred', label='Initial states', linestyle='None'),
+        Line2D([0], [0], marker='d', color='w', markerfacecolor='lime', markersize=8,
+               markeredgecolor='darkgreen', label='Terminal states', linestyle='None'),
+        Line2D([0], [0], color='green', linewidth=2, linestyle='-', label=r'Target covariance $\Sigma_T$'),
+    ]
+
+    # Add legends
+    ax.legend(handles=legend_handles_hcs, loc='upper left', 
+              prop={'family': 'serif', 'size': 11}, framealpha=0.9)
+    ax_ilqr.legend(handles=legend_handles_ilqr, loc='upper left', 
+                   prop={'family': 'serif', 'size': 11}, framealpha=0.9)
+
+    # Improve plot appearance
+    ax.set_xlabel(r'$p_x$ (m)', fontsize=12, fontfamily='serif')
+    ax.set_ylabel(r'$p_z$ (m)', fontsize=12, fontfamily='serif')
+    ax_ilqr.set_xlabel(r'$p_x$ (m)', fontsize=12, fontfamily='serif')
+    ax_ilqr.set_ylabel(r'$p_z$ (m)', fontsize=12, fontfamily='serif')
+
+    # Tight layout
+    fig.tight_layout()
+    fig_ilqr.tight_layout()
+    
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    ax_ilqr.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+    # Save figures
+    fig.savefig("figures/h_cs_slip_samples.pdf", format="pdf", dpi=300, bbox_inches='tight')
+    fig_ilqr.savefig("figures/h_ilqr_slip_samples.pdf", format="pdf", dpi=300, bbox_inches='tight')
+    
     plt.show()
-
-    # for i in range(0, nt, 10):
-    #     ellipse_boundary, ax2 = plot_2d_ellipsoid_boundary(states[i], cov_trj[i,0:2,0:2], ax2, 'b')
-
-    # # ========================= controlled covariances i-LQG =========================
-    # K_ilQG = np.asarray(K_feedback)
-    # cov_trj_lqg = np.zeros((nt, n_states[0], n_states[0]))
-    # cov_trj_lqg[0] = Sig0
-
-    # for i in range(0, t_event):
-    #     Acl_i = A[i] + B[i]@K_ilQG[i]
-    #     cov_trj_lqg[i+1] = cov_trj_lqg[i] + (Acl_i@cov_trj_lqg[i] + cov_trj_lqg[i]@Acl_i.T + B[i]@B[i].T) * dt
-    
-    # # hybrid time
-    # cov_trj_lqg[t_event+1] = E_linear@cov_trj_lqg[t_event]@E_linear.T
-
-    # for i in range(t_event+1, nt-1):
-    #     Acl_i = A[i] + B[i]@K_ilQG[i]
-    #     cov_trj_lqg[i+1] = cov_trj_lqg[i] + (Acl_i@cov_trj_lqg[i] + cov_trj_lqg[i]@Acl_i.T + B[i]@B[i].T) * dt
-
