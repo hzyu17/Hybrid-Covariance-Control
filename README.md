@@ -196,17 +196,8 @@ The convex SDP formulation handles the singular post-jump covariance `Σ⁺`, wh
 ### 2. Solve for the Covariance Control Problem
 
 <p style="text-align:center;">
-<img src="figures/h_cs_slip_samples_stable.pdf" width="400" alt="Controlled state samples under H-CS and the terminal covariance">
-<img src="figures/h_ilqr_slip_samples_stable.pdf" width="400" alt="Controlled state samples under H-iLQR and the terminal covariance">
-</p>
-
-</p>
-
-### 2. Solve for the Covariance Control Problem
-
-<p style="text-align:center;">
-<img src="figures/h_cs_slip_samples_stable.pdf" width="400" alt="Controlled state samples under H-CS and the terminal covariance">
-<img src="figures/h_ilqr_slip_samples_stable.pdf" width="400" alt="Controlled state samples under H-iLQR and the terminal covariance">
+<img src="figures/h_cs_slip_samples_stable.png" width="400" alt="Controlled state samples under H-CS and the terminal covariance">
+<img src="figures/h_ilqr_slip_samples_stable.png" width="400" alt="Controlled state samples under H-iLQR and the terminal covariance">
 </p>
 
 
