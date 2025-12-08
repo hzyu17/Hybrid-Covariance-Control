@@ -133,8 +133,6 @@ Creates 3D surface plot showing covariance evolution along mean trajectory.
 
 ### Bouncing Ball with Elastic Impact
 
-![Bouncing Ball Covariance Tube](figures/cov_steering_bouncing.pdf)
-
 The bouncing ball example demonstrates covariance steering through elastic collisions. The visualization shows:
 - **3-sigma covariance ellipses** along the trajectory (plotted every 10-40 timesteps)
 - **Initial covariance** (red) and **terminal covariance** (green)
@@ -143,7 +141,10 @@ The bouncing ball example demonstrates covariance steering through elastic colli
 
 The H-CS controller successfully steers the state covariance to the exact target `ΣT = 0.05I₂` despite stochastic impact timing.
 
-> **Note:** If viewing on GitHub and figures don't display, you can convert PDFs to PNG: `convert -density 300 figures/cov_steering_bouncing.pdf figures/cov_steering_bouncing.png`
+<p style="text-align:center;">
+<img src="figures/cov_steering_bouncing.png" width="400" alt="Controlled state covariance tube for the bouncing ball dynamics">
+</p>
+
 
 ### SLIP Model with State Dimension Change
 
@@ -170,7 +171,6 @@ The convex SDP formulation handles the singular post-jump covariance `Σ⁺`, wh
 #### Initial guess:
 
 <p style="text-align:center;">
-<p style="text-align:center;">
 <img src="figures/slip/initial_rollout.png" width="400" alt="Initial Rollout">
 <img src="figures/slip/initial_px.png" width="400" alt="Initial px">
 <img src="figures/slip/initial_vx.png" width="400" alt="Initial vx">
@@ -178,11 +178,8 @@ The convex SDP formulation handles the singular post-jump covariance `Σ⁺`, wh
 <img src="figures/slip/initial_vy.png" width="400" alt="Initial vy">
 <img src="figures/slip/initial_leg_angle.png" width="400" alt="Initial leg angle">
 </p>
-</p>
 
 #### After H-iLQR optimization:
-
-<p style="text-align:center;">
 
 <p style="text-align:center;">
 <img src="figures/slip/final_rollout.png" width="400" alt="Final Rollout">
