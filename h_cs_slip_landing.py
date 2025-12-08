@@ -158,7 +158,6 @@ def linearized_hybrid_stochastic_feedback_rollout_discrete(init_mode, x0, n_inpu
         
         # ======== Handle mode mismatch ========
         if cond_mode_mismatch_func(current_mode, ref_current_mode):
-            print("mode mismatch at time: ", ii_t)
             xref_i, K_fb_i, k_ff_i, cnt_mismatch = reaction_mode_mismatch_func(ii_t, current_mode, ref_current_mode, 
                                                                                 v_ref_ext_fwd[0], v_ref_ext_bwd[0], 
                                                                                 v_event_modechange[0],

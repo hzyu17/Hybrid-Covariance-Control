@@ -304,7 +304,6 @@ def h_stoch_fb_rollout(init_mode, x0, n_inputs, xt_ref, ref_modes,
         
         # Handle mode mismatch
         if cond_mismatch_func(current_mode, ref_current_mode):
-            print(f"Mode mismatch at time: {ii_t}")
             xref_i, K_fb_i, k_ff_i, cnt_mismatch = reaction_mismatch_func(
                 ii_t, current_mode, ref_current_mode,
                 v_ext_fwd[0], v_ext_bwd[0], v_event_modechange[0],

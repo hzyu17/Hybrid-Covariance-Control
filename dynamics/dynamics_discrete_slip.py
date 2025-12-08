@@ -169,7 +169,6 @@ def guard_true_slip_12(args):
 
 def guard_true_slip_21(args):
     """Handle stance -> flight transition."""
-    print("slip guard condition 21: True")
     xt_current, current_mode, u, t, _, dt_int, rand_noise, eps, reset_arg = args
     return _bisection_find_event(
         xt_current, current_mode, u, t, dt_int, eps, rand_noise,
