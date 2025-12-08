@@ -147,7 +147,15 @@ The H-CS controller successfully steers the state covariance to the exact target
 
 ### SLIP Model with State Dimension Change
 
-#### 1. Solve for the Mean trajectory using H-iLQR
+The Spring-Loaded Inverted Pendulum (SLIP) example shows covariance steering with **singular jump dynamics** (4D stance → 5D flight):
+- **Nominal trajectory** (transparent legs with springs) computed via H-iLQR
+- **Stochastic samples** (cyan dots) starting from initial distribution (red diamonds)
+- **3-sigma terminal boundary** showing target covariance achieved
+- **Mode transition:** System jumps from lower to higher dimensional state space
+
+The convex SDP formulation handles the singular post-jump covariance `Σ⁺`, which is rank-deficient due to dimension increase. Monte Carlo samples validate that the controller achieves the specified terminal covariance `ΣT = 0.0003I₅`.
+
+### 1. Solve for the Mean trajectory using H-iLQR
 
 #### Initial guess:
 
@@ -171,15 +179,13 @@ The H-CS controller successfully steers the state covariance to the exact target
 <img src="figures/slip/final_leg_angle.png" width="400" alt="Final leg angle">
 </p>
 
-![SLIP Trajectory Samples](figures/h_cs_slip_samples.pdf)
+### 2. Solve for the Covariance Control Problem
 
-The Spring-Loaded Inverted Pendulum (SLIP) example shows covariance steering with **singular jump dynamics** (4D stance → 5D flight):
-- **Nominal trajectory** (transparent legs with springs) computed via H-iLQR
-- **Stochastic samples** (cyan dots) starting from initial distribution (red diamonds)
-- **3-sigma terminal boundary** showing target covariance achieved
-- **Mode transition:** System jumps from lower to higher dimensional state space
+<p style="text-align:center;">
+<img src="figures/h_cs_slip_samples_stable.pdf" width="400" alt="Controlled state samples under H-CS and the terminal covariance">
+<img src="figures/h_ilqr_slip_samples_stable.pdf" width="400" alt="Controlled state samples under H-iLQR and the terminal covariance">
+</p>
 
-The convex SDP formulation handles the singular post-jump covariance `Σ⁺`, which is rank-deficient due to dimension increase. Monte Carlo samples validate that the controller achieves the specified terminal covariance `ΣT = 0.0003I₅`.
 
 ## Project Structure
 
@@ -273,4 +279,4 @@ This implementation builds upon:
 
 MIT.
 
-**Last Updated**: November 2024
+**Last Updated**: December 2025
