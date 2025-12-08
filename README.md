@@ -140,11 +140,11 @@ The bouncing ball example demonstrates covariance steering through elastic colli
 - **Comparison:** H-CS explicitly optimizes jump covariances vs H-iLQR standard LQG approach
 
 The H-CS controller successfully steers the state covariance to the exact target `ΣT = 0.05I₂` despite stochastic impact timing.
-
 <p style="text-align:center;">
-<img src="figures/cov_steering_bouncing.png" width="400" alt="Controlled state covariance tube for the bouncing ball dynamics">
+<img src="figures/covariance_steering_bouncing_hcs.png" width="350" alt="State plots, H-CS">
+<img src="figures/covariance_steering_bouncing_hilqr.png" width="350" alt="State plots, H-iLQR">
+<img src="figures/cov_steering_bouncing.jpg" width="350" alt="Time-State Covariance Plot with Sampled States">
 </p>
-
 
 ### SLIP Model with State Dimension Change
 
