@@ -157,8 +157,19 @@ The convex SDP formulation handles the singular post-jump covariance `Σ⁺`, wh
 
 ### 1. Solve for the Mean trajectory using H-iLQR
 
+The Spring-Loaded Inverted Pendulum (SLIP) example shows covariance steering with **singular jump dynamics** (4D stance → 5D flight):
+- **Nominal trajectory** (transparent legs with springs) computed via H-iLQR
+- **Stochastic samples** (cyan dots) starting from initial distribution (red diamonds)
+- **3-sigma terminal boundary** showing target covariance achieved
+- **Mode transition:** System jumps from lower to higher dimensional state space
+
+The convex SDP formulation handles the singular post-jump covariance `Σ⁺`, which is rank-deficient due to dimension increase. Monte Carlo samples validate that the controller achieves the specified terminal covariance `ΣT = 0.0003I₅`.
+
+### 1. Solve for the Mean trajectory using H-iLQR
+
 #### Initial guess:
 
+<p style="text-align:center;">
 <p style="text-align:center;">
 <img src="figures/slip/initial_rollout.png" width="400" alt="Initial Rollout">
 <img src="figures/slip/initial_px.png" width="400" alt="Initial px">
@@ -167,8 +178,11 @@ The convex SDP formulation handles the singular post-jump covariance `Σ⁺`, wh
 <img src="figures/slip/initial_vy.png" width="400" alt="Initial vy">
 <img src="figures/slip/initial_leg_angle.png" width="400" alt="Initial leg angle">
 </p>
+</p>
 
 #### After H-iLQR optimization:
+
+<p style="text-align:center;">
 
 <p style="text-align:center;">
 <img src="figures/slip/final_rollout.png" width="400" alt="Final Rollout">
@@ -177,6 +191,15 @@ The convex SDP formulation handles the singular post-jump covariance `Σ⁺`, wh
 <img src="figures/slip/final_py.png" width="400" alt="Final py">
 <img src="figures/slip/final_vy.png" width="400" alt="Final vy">
 <img src="figures/slip/final_leg_angle.png" width="400" alt="Final leg angle">
+</p>
+
+### 2. Solve for the Covariance Control Problem
+
+<p style="text-align:center;">
+<img src="figures/h_cs_slip_samples_stable.pdf" width="400" alt="Controlled state samples under H-CS and the terminal covariance">
+<img src="figures/h_ilqr_slip_samples_stable.pdf" width="400" alt="Controlled state samples under H-iLQR and the terminal covariance">
+</p>
+
 </p>
 
 ### 2. Solve for the Covariance Control Problem
