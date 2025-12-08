@@ -147,6 +147,25 @@ The H-CS controller successfully steers the state covariance to the exact target
 
 ### SLIP Model with State Dimension Change
 
+#### 1. Solve for the Mean trajectory using H-iLQR
+#### Initial guess:
+
+<img src="figures/slip/initial_rollout.png" width="400" alt="Initial Rollout">
+<img src="figures/slip/initial_px.png" width="400" alt="Initial px">
+<img src="figures/slip/initial_vx.png" width="400" alt="Initial vx">
+<img src="figures/slip/initial_py.png" width="400" alt="Initial py">
+<img src="figures/slip/initial_vy.png" width="400" alt="Initial vy">
+<img src="figures/slip/initial_leg_angle.png" width="400" alt="Initial leg angle">
+
+#### After H-iLQR optimization:
+<img src="figures/slip/final_rollout.png" width="400" alt="Final Rollout">
+<img src="figures/slip/final_px.png" width="400" alt="Final px">
+<img src="figures/slip/final_vx.png" width="400" alt="Final vx">
+<img src="figures/slip/final_py.png" width="400" alt="Final py">
+<img src="figures/slip/final_vy.png" width="400" alt="Final vy">
+<img src="figures/slip/final_leg_angle.png" width="400" alt="Final leg angle">
+
+
 ![SLIP Trajectory Samples](figures/h_cs_slip_samples.pdf)
 
 The Spring-Loaded Inverted Pendulum (SLIP) example shows covariance steering with **singular jump dynamics** (4D stance → 5D flight):

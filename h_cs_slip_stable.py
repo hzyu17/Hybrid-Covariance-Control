@@ -617,7 +617,7 @@ if __name__ == '__main__':
     
     # Terminal cost 
     target_mode = 0
-    Q_T = 2.0 * np.eye(n_states[0])
+    Q_T = 5.0 * np.eye(n_states[0])
     
     # Running costs
     Q_k = [np.zeros((n_states[0], n_states[0])), np.zeros((n_states[1], n_states[1]))]

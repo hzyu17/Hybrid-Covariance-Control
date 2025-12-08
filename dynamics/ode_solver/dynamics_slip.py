@@ -9,6 +9,10 @@ from dynamics.guard_reset_slip import *
 
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
+
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
+
 font_props = FontProperties(family='serif', size=16, weight='normal')
 
 import sympy as sp
@@ -624,196 +628,493 @@ def plot_slip(time_span, modes,
               nt, reset_args, 
               figs=None, axes=None, 
               color='k', alpha=1.0, 
-              step=2, trj_label=None):
+              step=2, trj_label=None,
+              show_mode_indicator=True,
+              show_start_goal=True,
+              legend_loc='best',
+              convert_state_func=None):
+    """
+    Plot SLIP trajectory data with comprehensive legends.
+    
+    Args:
+        time_span: Array of time values
+        modes: Array of mode indices (0=flight, 1=stance)
+        states: List of state vectors at each time step
+        inputs: List of input arrays per mode
+        init_state: Initial state vector
+        target_state: Target state vector
+        nt: Number of time steps
+        reset_args: Reset arguments for state conversion
+        figs: Optional existing figure handles
+        axes: Optional existing axes handles
+        color: Line color for trajectory
+        alpha: Line transparency
+        step: Plotting step size (for downsampling)
+        trj_label: Label for trajectory in legend
+        show_mode_indicator: Whether to show mode as background shading
+        show_start_goal: Whether to mark start and goal states
+        legend_loc: Legend location ('best', 'upper right', etc.)
+        convert_state_func: Function to convert stance states to flight states
+                           (defaults to convert_state_21_slip if None)
+    
+    Returns:
+        figs: Array of figure handles
+        axes: Array of axes handles
+    """
+    
+    # Import conversion function if not provided
+    if convert_state_func is None:
+        from dynamics.dynamics_discrete_slip import convert_state_21_slip
+        convert_state_func = convert_state_21_slip
     
     font_props = FontProperties(family='serif', size=18, weight='normal')
+    legend_font_props = {'family': 'serif', 'size': 12}
     
-    # =============== plotting ===============
+    # =============== Create figures if not provided ===============
     if (figs is None) and (axes is None):
-        # fig11, axes11 = plt.subplots(1, 3, figsize=(15, 5))
-        # fig12, axes12 = plt.subplots(1, 2, figsize=(10, 5))
-        # (ax11, ax12, ax13) = axes11.flatten()[0], axes11.flatten()[1], axes11.flatten()[2]
-        # ax14, ax15 = axes12.flatten()[0], axes12.flatten()[1]
+        fig11, ax11 = plt.subplots(1, 1, figsize=(5, 4))
+        fig12, ax12 = plt.subplots(1, 1, figsize=(5, 4))
+        fig13, ax13 = plt.subplots(1, 1, figsize=(5, 4))
+        fig14, ax14 = plt.subplots(1, 1, figsize=(5, 4))
+        fig15, ax15 = plt.subplots(1, 1, figsize=(5, 4))
         
-        fig11, ax11 = plt.subplots(1, 1, figsize=(4, 5))
-        fig12, ax12 = plt.subplots(1, 1, figsize=(4, 5))
-        fig13, ax13 = plt.subplots(1, 1, figsize=(4, 5))
-        fig14, ax14 = plt.subplots(1, 1, figsize=(4, 5))
-        fig15, ax15 = plt.subplots(1, 1, figsize=(4, 5))
-        
-        fig2, axes2 = plt.subplots(2, 2, figsize=(20, 5))
-        fig3, ax3 = plt.subplots(1, 1, figsize=(4, 5))
-        fig4, ax4 = plt.subplots(1, 1, figsize=(4, 5))
+        fig2, axes2 = plt.subplots(2, 2, figsize=(12, 8))
+        fig3, ax3 = plt.subplots(1, 1, figsize=(5, 4))
+        fig4, ax4 = plt.subplots(1, 1, figsize=(5, 4))
                 
-        (ax21, ax22, ax23, ax24) = axes2.flatten()[0], axes2.flatten()[1], axes2.flatten()[2], axes2.flatten()[3]
-    
+        (ax21, ax22, ax23, ax24) = axes2.flatten()
+        
+        # Initialize figures as new
+        is_new_figure = True
     else:
         (fig11, fig12, fig13, fig14, fig15, fig2, fig3, fig4) = figs.flatten()
         (ax11, ax12, ax13, ax14, ax15, ax3, ax21, ax22, ax23, ax24, ax4) = axes.flatten()
+        is_new_figure = False
     
-    # ax11.grid(True)
-    # ax12.grid(True)
-    # ax13.grid(True)
-    # ax14.grid(True)
-    # ax15.grid(True)
-    # ax3.grid(True)
-    
-    # ax21.grid(True)
-    # ax22.grid(True)
-    # ax23.grid(True)
-    # ax24.grid(True)
-    # ax4.grid(True)
-
-    # convert the stance mode states to the flight mode states
+    # =============== Convert stance states to flight coordinates ===============
     flight_mode_states = np.zeros((nt, 5))
     for i in range(nt):
         if modes[i] == 0:
             flight_mode_states[i] = states[i].flatten()
         elif modes[i] == 1:
-            flight_mode_states[i] = convert_state_21_slip(states[i], reset_args[i][0]).flatten()
+            reset_arg = reset_args[i][0] if isinstance(reset_args[i], (list, np.ndarray)) else reset_args[i]
+            flight_mode_states[i] = convert_state_func(states[i], reset_arg).flatten()
     
-    # ax11.plot(time_span[::step], modes[::step], color=color)   
-    ax11.plot(time_span[::step], flight_mode_states[::step,0], linewidth=0.8, color=color, alpha=alpha, label=trj_label)
-    ax12.plot(time_span[::step], flight_mode_states[::step,1], linewidth=0.8, color=color, alpha=alpha, label=trj_label)
-    ax13.plot(time_span[::step], flight_mode_states[::step,2], linewidth=0.8, color=color, alpha=alpha, label=trj_label)
-    ax14.plot(time_span[::step], flight_mode_states[::step,3], linewidth=0.8, color=color, alpha=alpha, label=trj_label)
-    ax15.plot(time_span[::step], flight_mode_states[::step,4], linewidth=0.8, color=color, alpha=alpha, label=trj_label)
+    # =============== Add mode shading (background) ===============
+    if show_mode_indicator and is_new_figure:
+        # Find mode transition points
+        mode_changes = [0]
+        for i in range(1, nt):
+            if modes[i] != modes[i-1]:
+                mode_changes.append(i)
+        mode_changes.append(nt-1)
+        
+        # Shade regions by mode
+        for ax in [ax11, ax12, ax13, ax14, ax15]:
+            ylim = ax.get_ylim() if ax.get_ylim() != (0.0, 1.0) else None
+            for j in range(len(mode_changes)-1):
+                start_idx = mode_changes[j]
+                end_idx = mode_changes[j+1]
+                mode_val = modes[start_idx]
+                
+                if mode_val == 0:  # Flight
+                    ax.axvspan(time_span[start_idx], time_span[end_idx], 
+                              alpha=0.1, color='skyblue', zorder=0)
+                else:  # Stance
+                    ax.axvspan(time_span[start_idx], time_span[end_idx], 
+                              alpha=0.1, color='salmon', zorder=0)
+            if ylim:
+                ax.set_ylim(ylim)
     
-    ax11.plot(time_span[::step], modes[::step], linewidth=0.8, color='r', alpha=alpha, label=trj_label)
-    ax12.plot(time_span[::step], modes[::step], linewidth=0.8, color='r', alpha=alpha, label=trj_label)
-    ax13.plot(time_span[::step], modes[::step], linewidth=0.8, color='r', alpha=alpha, label=trj_label)
-    ax14.plot(time_span[::step], modes[::step], linewidth=0.8, color='r', alpha=alpha, label=trj_label)
-    ax15.plot(time_span[::step], modes[::step], linewidth=0.8, color='r', alpha=alpha, label=trj_label)
-   
-
-    # --------------------------------------- 
-    #  Collect the mode 1 states and inputs
-    # ---------------------------------------
-    mode1_timestamps = []
-    mode1_states = []
-    mode1_inputs = []
-    mode1_modes = []
+    # =============== Plot flight mode states ===============
+    # Use a default label if none provided
+    plot_label = trj_label if trj_label else 'Trajectory'
     
-    # --------------------------------------- 
-    #  Collect the mode 0 states and inputs
-    # ---------------------------------------
-    mode0_timestamps = []
-    mode0_states = []
-    mode0_inputs = []
-    mode0_modes = []
+    line11, = ax11.plot(time_span[::step], flight_mode_states[::step, 0], 
+                        linewidth=1.5, color=color, alpha=alpha, label=plot_label)
+    line12, = ax12.plot(time_span[::step], flight_mode_states[::step, 1], 
+                        linewidth=1.5, color=color, alpha=alpha, label=plot_label)
+    line13, = ax13.plot(time_span[::step], flight_mode_states[::step, 2], 
+                        linewidth=1.5, color=color, alpha=alpha, label=plot_label)
+    line14, = ax14.plot(time_span[::step], flight_mode_states[::step, 3], 
+                        linewidth=1.5, color=color, alpha=alpha, label=plot_label)
+    line15, = ax15.plot(time_span[::step], flight_mode_states[::step, 4], 
+                        linewidth=1.5, color=color, alpha=alpha, label=plot_label)
     
-    for i in range(0,nt-1,step):
+    # =============== Collect mode-specific data ===============
+    mode1_timestamps, mode1_states, mode1_inputs = [], [], []
+    mode0_timestamps, mode0_states, mode0_inputs = [], [], []
+    
+    for i in range(0, nt-1, step):
         if modes[i] == 0:
             mode0_timestamps.append(time_span[i])
             mode0_states.append(states[i])
             mode0_inputs.append(inputs[modes[i]][i])
-            mode0_modes.append(modes[i])
-            
-        if modes[i] == 1:
-            assert len(states[i]) == 4
+        elif modes[i] == 1:
             mode1_timestamps.append(time_span[i])
             mode1_states.append(states[i])
             mode1_inputs.append(inputs[modes[i]][i])
-            mode1_modes.append(modes[i])
+    
+    mode0_timestamps = np.array(mode0_timestamps) if mode0_timestamps else np.array([])
+    mode0_states = np.array(mode0_states) if mode0_states else np.array([]).reshape(0, 5)
+    mode0_inputs = np.array(mode0_inputs) if mode0_inputs else np.array([]).reshape(0, 3)
+    
+    mode1_timestamps = np.array(mode1_timestamps) if mode1_timestamps else np.array([])
+    mode1_states = np.array(mode1_states) if mode1_states else np.array([]).reshape(0, 4)
+    mode1_inputs = np.array(mode1_inputs) if mode1_inputs else np.array([]).reshape(0, 2)
+    
+    # =============== Plot mode 0 (flight) control inputs ===============
+    if len(mode0_inputs) > 0:
+        ax3.plot(mode0_timestamps, mode0_inputs[:, 0], 
+                linewidth=1.5, color='blue', alpha=alpha, label=r'$u_x$ (horiz. accel)')
+        ax3.plot(mode0_timestamps, mode0_inputs[:, 1], 
+                linewidth=1.5, color='red', alpha=alpha, label=r'$u_z$ (vert. accel)')
+        ax3.plot(mode0_timestamps, mode0_inputs[:, 2], 
+                linewidth=1.5, color='green', alpha=alpha, label=r'$\dot{\theta}$ (leg rate)')
+    
+    # =============== Plot mode 1 (stance) states ===============
+    if len(mode1_states) > 0:
+        ax21.plot(mode1_timestamps, mode1_states[:, 0], 
+                 linewidth=1.5, color=color, alpha=alpha, label=plot_label)
+        ax22.plot(mode1_timestamps, mode1_states[:, 1], 
+                 linewidth=1.5, color=color, alpha=alpha, label=plot_label)
+        ax23.plot(mode1_timestamps, mode1_states[:, 2], 
+                 linewidth=1.5, color=color, alpha=alpha, label=plot_label)
+        ax24.plot(mode1_timestamps, mode1_states[:, 3], 
+                 linewidth=1.5, color=color, alpha=alpha, label=plot_label)
+    
+    # =============== Plot mode 1 (stance) control inputs ===============
+    if len(mode1_inputs) > 0:
+        ax4.plot(mode1_timestamps, mode1_inputs[:, 0], 
+                linewidth=1.5, color='blue', alpha=alpha, label=r'$\Delta r$ (spring)')
+        ax4.plot(mode1_timestamps, mode1_inputs[:, 1], 
+                linewidth=1.5, color='red', alpha=alpha, label=r'$\tau_{hip}$ (torque)')
+    
+    # =============== Plot start and goal markers ===============
+    if show_start_goal:
+        # Convert init state if in stance mode
+        if modes[0] == 1:
+            init_state_flight = convert_state_func(init_state, np.array([0.0]))
+        else:
+            init_state_flight = init_state
         
-    mode0_timestamps = np.array(mode0_timestamps)
-    mode0_states = np.array(mode0_states)
-    mode0_inputs = np.array(mode0_inputs)
-    mode0_modes = np.array(mode0_modes)
+        marker_size = 80
+        
+        # Start markers
+        ax11.scatter(time_span[0], init_state_flight[0], color='red', marker='o', 
+                    s=marker_size, zorder=5, edgecolors='darkred', linewidths=1.5, label='Start')
+        ax12.scatter(time_span[0], init_state_flight[1], color='red', marker='o', 
+                    s=marker_size, zorder=5, edgecolors='darkred', linewidths=1.5)
+        ax13.scatter(time_span[0], init_state_flight[2], color='red', marker='o', 
+                    s=marker_size, zorder=5, edgecolors='darkred', linewidths=1.5)
+        ax14.scatter(time_span[0], init_state_flight[3], color='red', marker='o', 
+                    s=marker_size, zorder=5, edgecolors='darkred', linewidths=1.5)
+        ax15.scatter(time_span[0], init_state_flight[4], color='red', marker='o', 
+                    s=marker_size, zorder=5, edgecolors='darkred', linewidths=1.5)
+        
+        # Goal markers
+        ax11.scatter(time_span[-1], target_state[0], color='lime', marker='*', 
+                    s=marker_size*1.5, zorder=5, edgecolors='darkgreen', linewidths=1.5, label='Target')
+        ax12.scatter(time_span[-1], target_state[1], color='lime', marker='*', 
+                    s=marker_size*1.5, zorder=5, edgecolors='darkgreen', linewidths=1.5)
+        ax13.scatter(time_span[-1], target_state[2], color='lime', marker='*', 
+                    s=marker_size*1.5, zorder=5, edgecolors='darkgreen', linewidths=1.5)
+        ax14.scatter(time_span[-1], target_state[3], color='lime', marker='*', 
+                    s=marker_size*1.5, zorder=5, edgecolors='darkgreen', linewidths=1.5)
+        ax15.scatter(time_span[-1], target_state[4], color='lime', marker='*', 
+                    s=marker_size*1.5, zorder=5, edgecolors='darkgreen', linewidths=1.5)
     
-    mode1_timestamps = np.array(mode1_timestamps)
-    mode1_states = np.array(mode1_states)
-    mode1_inputs = np.array(mode1_inputs)
-    mode1_modes = np.array(mode1_modes)
-    
-    # plot mode 0 control input
-    if len(mode0_inputs)>0: 
-        ax3.plot(mode0_timestamps[0:-1:step], mode0_inputs[0:-1:step], color='b', label=r'$u$')
-        ax3.set_ylim(np.min(mode0_inputs)-1, np.max(mode0_inputs)+1)
-    
-    # plot mode 1
-    ax21.plot(mode1_timestamps[::step], mode1_states[::step, 0], linewidth=0.8, color=color, alpha=alpha, label=trj_label)
-    ax22.plot(mode1_timestamps[::step], mode1_states[::step, 1], linewidth=0.8, color=color, alpha=alpha, label=trj_label)
-    ax23.plot(mode1_timestamps[::step], mode1_states[::step, 2], linewidth=0.8, color=color, alpha=alpha, label=trj_label)
-    ax24.plot(mode1_timestamps[::step], mode1_states[::step, 3], linewidth=0.8, color=color, alpha=alpha, label=trj_label)
+    # =============== Set axis labels ===============
+    ax11.set_xlabel(r"Time (s)", fontproperties=font_props)
+    ax11.set_ylabel(r"$p_x$ (m)", fontproperties=font_props)
+    ax11.set_title(r"Horizontal Position", fontproperties=font_props)
 
-    ax4.plot(mode1_timestamps[::step], mode1_inputs[::step, 0], linewidth=0.8, color='b', label=r'$u_1$')
-    ax4.plot(mode1_timestamps[::step], mode1_inputs[::step, 1], linewidth=0.8, color='r', label=r'$u_2$')
+    ax12.set_xlabel(r"Time (s)", fontproperties=font_props)
+    ax12.set_ylabel(r"$v_x$ (m/s)", fontproperties=font_props)
+    ax12.set_title(r"Horizontal Velocity", fontproperties=font_props)
     
-    # ----------- Plot the start and goal states -----------
-    if (modes[0] == 1):
-        init_state = convert_state_21_slip(init_state, np.array([0.0]))
+    ax13.set_xlabel(r"Time (s)", fontproperties=font_props)
+    ax13.set_ylabel(r"$p_z$ (m)", fontproperties=font_props)
+    ax13.set_title(r"Vertical Position", fontproperties=font_props)
     
-    # ax11.scatter(time_span[-1], target_state[0], color='g', marker='x', s=50.0, linewidths=6, label='Target')
-    # ax11.scatter(time_span[0], init_state[0], color='r', marker='x', s=50.0, linewidths=6, label='Start')
+    ax14.set_xlabel(r"Time (s)", fontproperties=font_props)
+    ax14.set_ylabel(r"$v_z$ (m/s)", fontproperties=font_props)
+    ax14.set_title(r"Vertical Velocity", fontproperties=font_props)
     
-    # ax12.scatter(time_span[-1], target_state[1], color='g', marker='x', s=50.0, linewidths=6, label='Target')
-    # ax12.scatter(time_span[0], init_state[1], color='r', marker='x', s=50.0, linewidths=6, label='Start')
+    ax15.set_xlabel(r"Time (s)", fontproperties=font_props)
+    ax15.set_ylabel(r"$\theta$ (rad)", fontproperties=font_props)
+    ax15.set_title(r"Leg Angle", fontproperties=font_props)
+    
+    ax3.set_xlabel(r"Time (s)", fontproperties=font_props)
+    ax3.set_ylabel(r"Input", fontproperties=font_props)
+    ax3.set_title(r"Flight Phase Inputs", fontproperties=font_props)
+    
+    ax21.set_xlabel(r"Time (s)", fontproperties=font_props)
+    ax21.set_ylabel(r"$\theta$ (rad)", fontproperties=font_props)
+    ax21.set_title(r"Stance: Leg Angle", fontproperties=font_props)
+    
+    ax22.set_xlabel(r"Time (s)", fontproperties=font_props)
+    ax22.set_ylabel(r"$\dot{\theta}$ (rad/s)", fontproperties=font_props)
+    ax22.set_title(r"Stance: Angular Velocity", fontproperties=font_props)
+    
+    ax23.set_xlabel(r"Time (s)", fontproperties=font_props)
+    ax23.set_ylabel(r"$r$ (m)", fontproperties=font_props)
+    ax23.set_title(r"Stance: Leg Length", fontproperties=font_props)
 
-    # ax13.scatter(time_span[-1], target_state[2], color='g', marker='x', s=50.0, linewidths=6, label='Target')
-    # ax13.scatter(time_span[0], init_state[2], color='r', marker='x', s=50.0, linewidths=6, label='Start')
+    ax24.set_xlabel(r"Time (s)", fontproperties=font_props)
+    ax24.set_ylabel(r"$\dot{r}$ (m/s)", fontproperties=font_props)
+    ax24.set_title(r"Stance: Leg Velocity", fontproperties=font_props)
     
-    # ax14.scatter(time_span[-1], target_state[3], color='g', marker='x', s=50.0, linewidths=6, label='Target')
-    # ax14.scatter(time_span[0], init_state[3], color='r', marker='x', s=50.0, linewidths=6, label='Start')
+    ax4.set_xlabel(r"Time (s)", fontproperties=font_props)
+    ax4.set_ylabel(r"Input", fontproperties=font_props)
+    ax4.set_title(r"Stance Phase Inputs", fontproperties=font_props)
     
-    # ax15.scatter(time_span[-1], target_state[4], color='g', marker='x', s=50.0, linewidths=6, label='Target')
-    # ax15.scatter(time_span[0], init_state[4], color='r', marker='x', s=50.0, linewidths=6, label='Start')
+    # =============== Add legends ===============
+    # Custom legend for flight state plots (includes mode shading explanation)
+    if is_new_figure:
+        # Create custom legend handles
+        legend_handles_state = []
+        
+        # Trajectory line
+        legend_handles_state.append(Line2D([0], [0], color=color, linewidth=1.5, 
+                                           label=plot_label if plot_label else 'Trajectory'))
+        
+        # Mode shading indicators
+        if show_mode_indicator:
+            legend_handles_state.append(Patch(facecolor='skyblue', alpha=0.3, 
+                                              edgecolor='none', label='Flight phase'))
+            legend_handles_state.append(Patch(facecolor='salmon', alpha=0.3, 
+                                              edgecolor='none', label='Stance phase'))
+        
+        # Start/goal markers
+        if show_start_goal:
+            legend_handles_state.append(Line2D([0], [0], marker='o', color='w', 
+                                               markerfacecolor='red', markersize=10,
+                                               markeredgecolor='darkred', markeredgewidth=1.5,
+                                               label='Start', linestyle='None'))
+            legend_handles_state.append(Line2D([0], [0], marker='*', color='w', 
+                                               markerfacecolor='lime', markersize=12,
+                                               markeredgecolor='darkgreen', markeredgewidth=1.5,
+                                               label='Target', linestyle='None'))
+        
+        # Add legends to flight state plots
+        for ax in [ax11, ax12, ax13, ax14, ax15]:
+            ax.legend(handles=legend_handles_state, loc=legend_loc, prop=legend_font_props,
+                     framealpha=0.9, fancybox=True)
+            ax.grid(True, linestyle='--', alpha=0.5)
+        
+        # Add legends to stance state plots
+        legend_handles_stance = [
+            Line2D([0], [0], color=color, linewidth=1.5, label=plot_label if plot_label else 'Trajectory')
+        ]
+        for ax in [ax21, ax22, ax23, ax24]:
+            ax.legend(handles=legend_handles_stance, loc=legend_loc, prop=legend_font_props,
+                     framealpha=0.9, fancybox=True)
+            ax.grid(True, linestyle='--', alpha=0.5)
+        
+        # Input plot legends
+        ax3.legend(loc=legend_loc, prop=legend_font_props, framealpha=0.9, fancybox=True)
+        ax3.grid(True, linestyle='--', alpha=0.5)
+        
+        ax4.legend(loc=legend_loc, prop=legend_font_props, framealpha=0.9, fancybox=True)
+        ax4.grid(True, linestyle='--', alpha=0.5)
     
-    ax11.set_xlabel(r"Time", fontproperties=font_props)
-    ax11.set_ylabel(r"$p_x$", fontproperties=font_props)
+    # Tight layout for all figures
+    for fig in [fig11, fig12, fig13, fig14, fig15, fig2, fig3, fig4]:
+        fig.tight_layout()
+    
+    return (np.array([fig11, fig12, fig13, fig14, fig15, fig2, fig3, fig4], dtype=object), 
+            np.array([ax11, ax12, ax13, ax14, ax15, ax3, ax21, ax22, ax23, ax24, ax4], dtype=object))
 
-    ax12.set_xlabel(r"Time", fontproperties=font_props)
-    ax12.set_ylabel(r"$v_x$", fontproperties=font_props)
-    
-    ax13.set_xlabel(r"Time", fontproperties=font_props)
-    ax13.set_ylabel(r"$p_z$", fontproperties=font_props)
-    
-    ax14.set_xlabel(r"Time", fontproperties=font_props)
-    ax14.set_ylabel(r"$v_z$", fontproperties=font_props)
-    
-    ax15.set_xlabel(r"Time", fontproperties=font_props)
-    ax15.set_ylabel(r"$\theta$", fontproperties=font_props)
-    
-    ax3.set_xlabel(r"Time", fontproperties=font_props)
-    ax3.set_ylabel(r"Inputs", fontproperties=font_props)
-    ax3.set_title(r"Inputs Mode 0", fontproperties=font_props)
-    
-    # ax21.set_xlabel(r"Time", fontproperties=font_props)
-    # ax21.set_ylabel(r"mode", fontproperties=font_props)
-    # ax21.set_title(r"SLIP mode", fontproperties=font_props)
-    
-    ax21.set_xlabel(r"Time", fontproperties=font_props)
-    ax21.set_ylabel(r"$\theta$", fontproperties=font_props)
-    ax21.set_title(r"$\theta$", fontproperties=font_props)
-    
-    ax22.set_xlabel(r"Time", fontproperties=font_props)
-    ax22.set_ylabel(r"$\dot \theta$", fontproperties=font_props)
-    ax22.set_title(r"$\dot \theta$", fontproperties=font_props)
-    
-    ax23.set_xlabel(r"Time", fontproperties=font_props)
-    ax23.set_ylabel(r"$r$", fontproperties=font_props)
-    ax23.set_title(r"$r$", fontproperties=font_props)
 
-    ax24.set_xlabel(r"Time", fontproperties=font_props)
-    ax24.set_ylabel(r"$\dot r$", fontproperties=font_props)
-    ax24.set_title(r"$\dot r$", fontproperties=font_props)
+def plot_slip_comparison(time_span, modes_list, states_list, inputs_list,
+                         init_state, target_state, nt, reset_args,
+                         labels=None, colors=None, 
+                         title_prefix="SLIP Trajectory Comparison",
+                         convert_state_func=None):
+    """
+    Plot multiple SLIP trajectories for comparison with proper legends.
     
-    # ax25.set_xlabel(r"Time", fontproperties=font_props)
-    # ax25.set_ylabel(r"Inputs", fontproperties=font_props)
-    # ax25.set_title(r"SLIP Inputs Mode 0", fontproperties=font_props)
+    Args:
+        time_span: Array of time values
+        modes_list: List of mode arrays for each trajectory
+        states_list: List of state arrays for each trajectory
+        inputs_list: List of input arrays for each trajectory
+        init_state: Initial state vector
+        target_state: Target state vector
+        nt: Number of time steps
+        reset_args: Reset arguments for state conversion
+        labels: List of labels for each trajectory
+        colors: List of colors for each trajectory
+        title_prefix: Prefix for figure titles
+        convert_state_func: Function to convert stance states to flight states
     
-    ax4.set_xlabel(r"Time", fontproperties=font_props)
-    ax4.set_ylabel(r"Inputs", fontproperties=font_props)
-    ax4.set_title(r"SLIP Inputs Mode 1", fontproperties=font_props)
+    Returns:
+        figs: Array of figure handles
+        axes: Array of axes handles
+    """
     
-    if ax3.get_legend() is None:
-        ax3.legend(loc='best', prop={'family': 'serif', 'size': 16})
+    n_trajectories = len(states_list)
     
-    if ax4.get_legend() is None:
-        ax4.legend(loc='best', prop={'family': 'serif', 'size': 16})
+    # Default labels and colors
+    if labels is None:
+        labels = [f'Trajectory {i+1}' for i in range(n_trajectories)]
+    if colors is None:
+        cmap = plt.cm.tab10
+        colors = [cmap(i) for i in range(n_trajectories)]
     
-    # return np.array([fig11, fig12, fig2, fig3, fig4], dtype=object), np.array([ax11, ax12, ax13, ax14, ax15, ax3, ax21, ax22, ax23, ax24, ax4], dtype=object)  
-    return np.array([fig11, fig12, fig13, fig14, fig15, fig2, fig3, fig4], dtype=object), np.array([ax11, ax12, ax13, ax14, ax15, ax3, ax21, ax22, ax23, ax24, ax4], dtype=object)  
+    # Plot first trajectory to create figures
+    figs, axes = plot_slip(time_span, modes_list[0], states_list[0], inputs_list[0],
+                           init_state, target_state, nt, reset_args,
+                           color=colors[0], trj_label=labels[0],
+                           show_mode_indicator=True, show_start_goal=True,
+                           convert_state_func=convert_state_func)
+    
+    # Overlay remaining trajectories
+    for i in range(1, n_trajectories):
+        plot_slip(time_span, modes_list[i], states_list[i], inputs_list[i],
+                 init_state, target_state, nt, reset_args,
+                 figs=figs, axes=axes,
+                 color=colors[i], trj_label=labels[i],
+                 show_mode_indicator=False, show_start_goal=False,
+                 convert_state_func=convert_state_func)
+    
+    # Update legends with all trajectories
+    font_props = {'family': 'serif', 'size': 12}
+    
+    # Create comprehensive legend handles
+    legend_handles = []
+    for i, (label, color) in enumerate(zip(labels, colors)):
+        legend_handles.append(Line2D([0], [0], color=color, linewidth=2, label=label))
+    
+    # Add mode indicators
+    legend_handles.append(Patch(facecolor='skyblue', alpha=0.3, edgecolor='none', label='Flight phase'))
+    legend_handles.append(Patch(facecolor='salmon', alpha=0.3, edgecolor='none', label='Stance phase'))
+    
+    # Add start/goal
+    legend_handles.append(Line2D([0], [0], marker='o', color='w', markerfacecolor='red', 
+                                 markersize=10, markeredgecolor='darkred', markeredgewidth=1.5,
+                                 label='Start', linestyle='None'))
+    legend_handles.append(Line2D([0], [0], marker='*', color='w', markerfacecolor='lime', 
+                                 markersize=12, markeredgecolor='darkgreen', markeredgewidth=1.5,
+                                 label='Target', linestyle='None'))
+    
+    # Update legends on all state plots
+    (ax11, ax12, ax13, ax14, ax15, ax3, ax21, ax22, ax23, ax24, ax4) = axes.flatten()
+    for ax in [ax11, ax12, ax13, ax14, ax15]:
+        ax.legend(handles=legend_handles, loc='best', prop=font_props, 
+                 framealpha=0.9, fancybox=True, ncol=1)
+    
+    # Set titles
+    (fig11, fig12, fig13, fig14, fig15, fig2, fig3, fig4) = figs.flatten()
+    fig11.suptitle(f"{title_prefix}: $p_x$", fontsize=14, fontfamily='serif')
+    fig12.suptitle(f"{title_prefix}: $v_x$", fontsize=14, fontfamily='serif')
+    fig13.suptitle(f"{title_prefix}: $p_z$", fontsize=14, fontfamily='serif')
+    fig14.suptitle(f"{title_prefix}: $v_z$", fontsize=14, fontfamily='serif')
+    fig15.suptitle(f"{title_prefix}: $\\theta$", fontsize=14, fontfamily='serif')
+    
+    return figs, axes
+
+
+def animate_slip_with_legend(modes, states, 
+                              init_mode, init_state, 
+                              target_mode, target_state, 
+                              nt, reset_args, target_reset_args,
+                              step=100, figsize=(8, 6),
+                              title="SLIP Animation",
+                              convert_state_func=None):
+    """
+    Create an animated-style plot of SLIP trajectory with comprehensive legend.
+    
+    Args:
+        modes: Array of mode indices
+        states: List of state vectors
+        init_mode: Initial mode
+        init_state: Initial state vector
+        target_mode: Target mode
+        target_state: Target state vector
+        nt: Number of time steps
+        reset_args: Reset arguments
+        target_reset_args: Target reset arguments
+        step: Plotting step size
+        figsize: Figure size tuple
+        title: Plot title
+        convert_state_func: State conversion function
+    
+    Returns:
+        fig, ax: Figure and axes handles
+    """
+    
+    if convert_state_func is None:
+        from dynamics.dynamics_discrete_slip import convert_state_21_slip
+        convert_state_func = convert_state_21_slip
+    
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    
+    r0 = 1.0  # Rest length of spring
+    
+    # Plot trajectory colored by mode
+    flight_segments_x, flight_segments_z = [], []
+    stance_segments_x, stance_segments_z = [], []
+    
+    for ii in range(0, nt, step):
+        mode_i = modes[ii]
+        reset_arg = reset_args[ii][0] if isinstance(reset_args[ii], (list, np.ndarray)) else reset_args[ii]
+        
+        if mode_i == 0:  # Flight
+            px, pz = states[ii][0], states[ii][2]
+            flight_segments_x.append(px)
+            flight_segments_z.append(pz)
+        elif mode_i == 1:  # Stance
+            converted = convert_state_func(states[ii], reset_arg)
+            px, pz = converted[0], converted[2]
+            stance_segments_x.append(px)
+            stance_segments_z.append(pz)
+    
+    # Plot trajectories
+    if flight_segments_x:
+        ax.scatter(flight_segments_x, flight_segments_z, c='blue', s=15, alpha=0.7, 
+                   marker='o', label='Flight trajectory')
+    if stance_segments_x:
+        ax.scatter(stance_segments_x, stance_segments_z, c='orange', s=15, alpha=0.7,
+                   marker='s', label='Stance trajectory')
+    
+    # Plot start state
+    if init_mode == 1:
+        init_converted = convert_state_func(init_state, np.array([0.0]))
+        init_px, init_pz = init_converted[0], init_converted[2]
+    else:
+        init_px, init_pz = init_state[0], init_state[2]
+    
+    ax.scatter(init_px, init_pz, c='red', s=150, marker='o', 
+               edgecolors='darkred', linewidths=2, zorder=10, label='Start')
+    
+    # Plot target state
+    target_px, target_pz = target_state[0], target_state[2]
+    ax.scatter(target_px, target_pz, c='lime', s=200, marker='*',
+               edgecolors='darkgreen', linewidths=2, zorder=10, label='Target')
+    
+    # Draw ground
+    x_min = min(min(flight_segments_x + stance_segments_x) - 0.5, init_px - 0.5)
+    x_max = max(max(flight_segments_x + stance_segments_x) + 0.5, target_px + 0.5)
+    ax.axhline(y=0, color='brown', linestyle='-', linewidth=3, label='Ground')
+    ax.fill_between([x_min, x_max], [-0.1, -0.1], [0, 0], color='brown', alpha=0.3)
+    
+    # Labels and formatting
+    ax.set_xlabel(r'$p_x$ (m)', fontsize=14, fontfamily='serif')
+    ax.set_ylabel(r'$p_z$ (m)', fontsize=14, fontfamily='serif')
+    ax.set_title(title, fontsize=16, fontfamily='serif')
+    
+    # Legend
+    ax.legend(loc='upper left', prop={'family': 'serif', 'size': 11}, 
+             framealpha=0.9, fancybox=True)
+    
+    ax.grid(True, linestyle='--', alpha=0.5)
+    ax.set_aspect('equal', adjustable='box')
+    
+    fig.tight_layout()
+    
+    return fig, ax
 
 
 def plot_slip_flight_animate(state_flight, r0, ax=None, spring_color='k-'):
