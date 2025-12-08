@@ -10,10 +10,10 @@ This repository provides methods for steering both the mean trajectory and uncer
 
 Hybrid covariance steering addresses the problem of controlling stochastic systems with **hybrid dynamics** (continuous flow + discrete jumps) to achieve desired distributions at specified times. Unlike standard LQG control, this method:
 
-- ✅ Explicitly steers covariance through mode transitions
-- ✅ Handles saltation matrices at discrete events
-- ✅ Provides optimal feedback control for both mean and uncertainty
-- ✅ Uses convex optimization for computational efficiency
+- Explicitly steers covariance through mode transitions
+- Handles saltation matrices at discrete events
+- Provides optimal feedback control for both mean and uncertainty
+- Uses convex optimization for computational efficiency
 
 ## Theory Summary
 
@@ -147,27 +147,6 @@ The H-CS controller successfully steers the state covariance to the exact target
 
 ### SLIP Model with State Dimension Change
 
-#### 1. Solve for the Mean trajectory using H-iLQR
-#### Initial guess:
-
-<img src="figures/slip/initial_rollout.png" width="400" alt="Initial Rollout">
-<img src="figures/slip/initial_px.png" width="400" alt="Initial px">
-<img src="figures/slip/initial_vx.png" width="400" alt="Initial vx">
-<img src="figures/slip/initial_py.png" width="400" alt="Initial py">
-<img src="figures/slip/initial_vy.png" width="400" alt="Initial vy">
-<img src="figures/slip/initial_leg_angle.png" width="400" alt="Initial leg angle">
-
-#### After H-iLQR optimization:
-<img src="figures/slip/final_rollout.png" width="400" alt="Final Rollout">
-<img src="figures/slip/final_px.png" width="400" alt="Final px">
-<img src="figures/slip/final_vx.png" width="400" alt="Final vx">
-<img src="figures/slip/final_py.png" width="400" alt="Final py">
-<img src="figures/slip/final_vy.png" width="400" alt="Final vy">
-<img src="figures/slip/final_leg_angle.png" width="400" alt="Final leg angle">
-
-
-![SLIP Trajectory Samples](figures/h_cs_slip_samples.pdf)
-
 The Spring-Loaded Inverted Pendulum (SLIP) example shows covariance steering with **singular jump dynamics** (4D stance → 5D flight):
 - **Nominal trajectory** (transparent legs with springs) computed via H-iLQR
 - **Stochastic samples** (cyan dots) starting from initial distribution (red diamonds)
@@ -175,6 +154,38 @@ The Spring-Loaded Inverted Pendulum (SLIP) example shows covariance steering wit
 - **Mode transition:** System jumps from lower to higher dimensional state space
 
 The convex SDP formulation handles the singular post-jump covariance `Σ⁺`, which is rank-deficient due to dimension increase. Monte Carlo samples validate that the controller achieves the specified terminal covariance `ΣT = 0.0003I₅`.
+
+### 1. Solve for the Mean trajectory using H-iLQR
+
+#### Initial guess:
+
+<p style="text-align:center;">
+<img src="figures/slip/initial_rollout.png" width="400" alt="Initial Rollout">
+<img src="figures/slip/initial_px.png" width="400" alt="Initial px">
+<img src="figures/slip/initial_vx.png" width="400" alt="Initial vx">
+<img src="figures/slip/initial_py.png" width="400" alt="Initial py">
+<img src="figures/slip/initial_vy.png" width="400" alt="Initial vy">
+<img src="figures/slip/initial_leg_angle.png" width="400" alt="Initial leg angle">
+</p>
+
+#### After H-iLQR optimization:
+
+<p style="text-align:center;">
+<img src="figures/slip/final_rollout.png" width="400" alt="Final Rollout">
+<img src="figures/slip/final_px.png" width="400" alt="Final px">
+<img src="figures/slip/final_vx.png" width="400" alt="Final vx">
+<img src="figures/slip/final_py.png" width="400" alt="Final py">
+<img src="figures/slip/final_vy.png" width="400" alt="Final vy">
+<img src="figures/slip/final_leg_angle.png" width="400" alt="Final leg angle">
+</p>
+
+### 2. Solve for the Covariance Control Problem
+
+<p style="text-align:center;">
+<img src="figures/h_cs_slip_samples_stable.pdf" width="400" alt="Controlled state samples under H-CS and the terminal covariance">
+<img src="figures/h_ilqr_slip_samples_stable.pdf" width="400" alt="Controlled state samples under H-iLQR and the terminal covariance">
+</p>
+
 
 ## Project Structure
 
@@ -215,34 +226,6 @@ For a hybrid system with event time `t*`:
 - Covariance propagation: `dΣ/dt = AclΣ + ΣAclᵀ + εBBᵀ`
 - Mode transitions via guard conditions
 
-## Key Parameters
-
-| Parameter | Description | Typical Values |
-|-----------|-------------|----------------|
-| `Sig0` | Initial covariance | `0.2 * I₂` |
-| `SigT` | Terminal covariance | `0.05 * I₂` |
-| `epsilon` | Process noise intensity | `0.5 - 1.5` |
-| `dt` | Time discretization | `0.001 - 0.0005` |
-| `E_linear` | Saltation matrix | System-dependent |
-
-### Problem Formulation
-
-Given a stochastic hybrid system:
-- **Mode 1**: `dx₁ = f₁(x₁,u₁)dt + √ε B₁ dW`
-- **Mode 2**: `dx₂ = f₂(x₂,u₂)dt + √ε B₂ dW`
-- **Jump map**: `x₂(t⁺) = E x₁(t⁻)` at guard surface
-
-**Goal**: Design feedback control to steer:
-- Mean: `x₀ → xT`
-- Covariance: `Σ₀ → ΣT`
-
-### Solution Approach
-
-1. **Linearize** around nominal trajectory from H-iLQR
-2. **Optimize** jump covariances via convex program
-3. **Synthesize** time-varying LQR gains using Riccati equations
-4. **Verify** via Monte Carlo simulations
-
 ## Citation
 
 If you use this code, please cite:
@@ -268,4 +251,5 @@ This implementation builds upon:
 
 MIT.
 
-**Last Updated**: November 2024
+**Last Updated**: December 2025
+**Last Updated**: December 2025
